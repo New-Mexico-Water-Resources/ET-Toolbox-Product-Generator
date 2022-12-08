@@ -12,13 +12,19 @@ from SRTM import SRTM
 from SoilGrids import SoilGrids
 from VIIRS.VNP09GA import VNP09GA
 from VIIRS.VNP21A1D import VNP21A1D
+from VIIRS.VNP43MA4 import VNP43MA4
 from downscaling import downscale_air_temperature, downscale_soil_moisture, downscale_vapor_pressure_deficit, \
     downscale_relative_humidity, bias_correct
 
-ET_MODEL_NAME = "PTJPL"
+ET_MODEL_NAME = "PTJPLSM"
+
 VIIRS_DOWNLOAD_DIRECTORY = "VIIRS_download"
 VIIRS_PRODUCTS_DIRECTORY = "VIIRS_products"
 VIIRS_GEOS5FP_OUTPUT_DIRECTORY = "VIIRS_GEOS5FP_output"
+
+USE_VIIRS_COMPOSITE = True
+VIIRS_COMPOSITE_DAYS = 8
+
 DEFAULT_RESAMPLING = "cubic"
 DEFAULT_PREVIEW_QUALITY = 20
 DEFAULT_DOWNSCALE_AIR = False
@@ -158,6 +164,9 @@ def VIIRS_GEOS5FP(
         static_directory: str = None,
         VIIRS_download_directory: str = None,
         VIIRS_products_directory: str = None,
+        VIIRS_shortwave_source: Union[VNP09GA, VNP43MA4] = None,
+        use_VIIRS_composite: bool = USE_VIIRS_COMPOSITE,
+        VIIRS_composite_days: int = VIIRS_COMPOSITE_DAYS,
         VIIRS_GEOS5FP_output_directory: str = None,
         SRTM_connection: SRTM = None,
         SRTM_download: str = None,
@@ -231,11 +240,18 @@ def VIIRS_GEOS5FP(
         products_directory=VIIRS_products_directory
     )
 
-    vnp09 = VNP09GA(
-        working_directory=working_directory,
-        download_directory=VIIRS_download_directory,
-        products_directory=VIIRS_products_directory
-    )
+    if VIIRS_shortwave_source is None:
+        VIIRS_shortwave_source = VNP43MA4(
+            working_directory=working_directory,
+            download_directory=VIIRS_download_directory,
+            products_directory=VIIRS_products_directory
+        )
+
+        # VIIRS_shortwave_source = VNP09GA(
+        #     working_directory=working_directory,
+        #     download_directory=VIIRS_download_directory,
+        #     products_directory=VIIRS_products_directory
+        # )
 
     if VIIRS_GEOS5FP_output_directory is None:
         VIIRS_GEOS5FP_output_directory = join(working_directory, VIIRS_GEOS5FP_OUTPUT_DIRECTORY)
@@ -287,6 +303,15 @@ def VIIRS_GEOS5FP(
         # ST_C = retrieve_VNP21NRT_ST(geometry=geometry, date_solar=target_date,
         #                             directory=VIIRS_download_directory, resampling="cubic") - 273.15
         ST_C = vnp21.ST_C(date_UTC=target_date, geometry=geometry, resampling="cubic")
+
+        if use_VIIRS_composite:
+            for days_back in range(1, VIIRS_composite_days):
+                fill_date = target_date - timedelta(days_back)
+                logger.info(
+                    f"gap-filling {cl.name('VNP21A1D')} {cl.name('ST_C')} from VIIRS on {cl.time(fill_date)} for {cl.time(target_date)}")
+                ST_C_fill = vnp21.ST_C(date_UTC=target_date, geometry=geometry, resampling="cubic")
+                ST_C = rt.where(np.isnan(ST_C), ST_C_fill, ST_C)
+
         ST_C_smooth = GEOS5FP_connection.Ts_K(time_UTC=time_UTC, geometry=geometry, resampling="cubic") - 273.15
         ST_C = rt.where(np.isnan(ST_C), ST_C_smooth, ST_C)
 
@@ -303,7 +328,15 @@ def VIIRS_GEOS5FP(
         #     directory=VIIRS_download_directory,
         #     resampling="cubic"
         # )
-        NDVI = vnp09.NDVI(date_UTC=target_date, geometry=geometry, resampling="cubic")
+        NDVI = VIIRS_shortwave_source.NDVI(date_UTC=target_date, geometry=geometry, resampling="cubic")
+
+        if use_VIIRS_composite:
+            for days_back in range(1, VIIRS_composite_days):
+                fill_date = target_date - timedelta(days_back)
+                logger.info(
+                    f"gap-filling {cl.name('VNP09GA')} {cl.name('NDVI')} from VIIRS on {cl.time(fill_date)} for {cl.time(target_date)}")
+                NDVI_fill = VIIRS_shortwave_source.NDVI(date_UTC=target_date, geometry=geometry, resampling="cubic")
+                NDVI = rt.where(np.isnan(NDVI), NDVI_fill, NDVI)
 
     results["NDVI"] = NDVI
 
@@ -329,7 +362,15 @@ def VIIRS_GEOS5FP(
         #     directory=VIIRS_download_directory,
         #     resampling="cubic"
         # )
-        albedo = vnp09.albedo(date_UTC=target_date, geometry=geometry, resampling="cubic")
+        albedo = VIIRS_shortwave_source.albedo(date_UTC=target_date, geometry=geometry, resampling="cubic")
+
+        if use_VIIRS_composite:
+            for days_back in range(1, VIIRS_composite_days):
+                fill_date = target_date - timedelta(days_back)
+                logger.info(
+                    f"gap-filling {cl.name('VNP09GA')} {cl.name('albedo')} from VIIRS on {cl.time(fill_date)} for {cl.time(target_date)}")
+                albedo_fill = VIIRS_shortwave_source.albedo(date_UTC=target_date, geometry=geometry, resampling="cubic")
+                albedo = rt.where(np.isnan(albedo), albedo_fill, albedo)
 
     results["albedo"] = albedo
 

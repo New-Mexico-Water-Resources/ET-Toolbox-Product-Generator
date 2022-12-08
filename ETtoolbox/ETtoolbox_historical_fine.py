@@ -19,6 +19,7 @@ from SRTM import SRTM
 from SoilGrids import SoilGrids
 from VIIRS.VNP09GA import VNP09GA
 from VIIRS.VNP21A1D import VNP21A1D
+from VIIRS.VNP43MA4 import VNP43MA4
 from VIIRS_GEOS5FP import VIIRS_GEOS5FP, check_VIIRS_GEOS5FP_already_processed, VIIRS_DOWNLOAD_DIRECTORY, \
     VIIRS_PRODUCTS_DIRECTORY, VIIRS_GEOS5FP_OUTPUT_DIRECTORY
 from VIIRS_orbit.VIIRS_orbit import solar_to_UTC
@@ -30,13 +31,16 @@ from sentinel import sentinel_tile_grid
 
 logger = logging.getLogger(__name__)
 
-ET_MODEL_NAME = "PTJPL"
+ET_MODEL_NAME = "PTJPLSM"
 SWIN_MODEL_NAME = "GEOS5FP"
 RN_MODEL_NAME = "Verma"
 
 DOWNSCALE_AIR = False
 DOWNSCALE_HUMIDITY = False
 DOWNSCALE_MOISTURE = False
+
+USE_VIIRS_COMPOSITE = True
+VIIRS_COMPOSITE_DAYS = 8
 
 HLS_CELL_SIZE = 30
 I_CELL_SIZE = 500
@@ -179,7 +183,10 @@ def ET_toolbox_historical_fine_tile(
         landsat_initialization_days: int = LANDSAT_INITIALIZATION_DAYS,
         VIIRS_download_directory: str = None,
         VIIRS_products_directory: str = None,
+        use_VIIRS_composite: bool = USE_VIIRS_COMPOSITE,
+        VIIRS_composite_days: int = VIIRS_COMPOSITE_DAYS,
         VIIRS_GEOS5FP_output_directory: str = None,
+        VIIRS_shortwave_source: Union[VNP09GA, VNP43MA4] = None,
         SRTM_connection: SRTM = None,
         SRTM_download: str = None,
         GEOS5FP_connection: GEOS5FP = None,
@@ -287,11 +294,18 @@ def ET_toolbox_historical_fine_tile(
         products_directory=VIIRS_products_directory
     )
 
-    vnp09 = VNP09GA(
-        working_directory=working_directory,
-        download_directory=VIIRS_download_directory,
-        products_directory=VIIRS_products_directory
-    )
+    if VIIRS_shortwave_source is None:
+        VIIRS_shortwave_source = VNP43MA4(
+            working_directory=working_directory,
+            download_directory=VIIRS_download_directory,
+            products_directory=VIIRS_products_directory
+        )
+
+        # VIIRS_shortwave_source = VNP09GA(
+        #     working_directory=working_directory,
+        #     download_directory=VIIRS_download_directory,
+        #     products_directory=VIIRS_products_directory
+        # )
 
     if VIIRS_GEOS5FP_output_directory is None:
         VIIRS_GEOS5FP_output_directory = join(working_directory, VIIRS_GEOS5FP_OUTPUT_DIRECTORY)
@@ -383,7 +397,8 @@ def ET_toolbox_historical_fine_tile(
         date_UTC=start_date,
         geometry=HLS_geometry,
         target_name=tile,
-        landsat=landsat
+        landsat=landsat,
+        landsat_initialization_days=landsat_initialization_days
     )
 
     for target_date in date_range(start_date, end_date):
@@ -433,6 +448,14 @@ def ET_toolbox_historical_fine_tile(
                 resampling="cubic"
             )
 
+            if use_VIIRS_composite:
+                for days_back in range(1, VIIRS_composite_days):
+                    fill_date = target_date - timedelta(days_back)
+                    logger.info(
+                        f"gap-filling {cl.name('VNP21A1D')} {cl.name('ST_C')} from VIIRS on {cl.time(fill_date)} for {cl.time(target_date)}")
+                    ST_C_M_fill = vnp21.ST_C(date_UTC=target_date, geometry=M_geometry, resampling="cubic")
+                    ST_C_M = rt.where(np.isnan(ST_C_M), ST_C_M_fill, ST_C_M)
+
             # for i in range(1, 16):
             #     ST_C_M_fill = vnp21.ST_C(
             #         date_UTC=target_date - timedelta(days=i),
@@ -477,11 +500,19 @@ def ET_toolbox_historical_fine_tile(
             #     directory=VIIRS_download,
             #     resampling="cubic"
             # )
-            NDVI_I = vnp09.NDVI(
+            NDVI_I = VIIRS_shortwave_source.NDVI(
                 date_UTC=target_date,
                 geometry=I_geometry,
                 resampling="cubic"
             )
+
+            if use_VIIRS_composite:
+                for days_back in range(1, VIIRS_composite_days):
+                    fill_date = target_date - timedelta(days_back)
+                    logger.info(
+                        f"gap-filling {cl.name('VNP09GA')} {cl.name('NDVI')} from VIIRS on {cl.time(fill_date)} for {cl.time(target_date)}")
+                    NDVI_I_fill = VIIRS_shortwave_source.NDVI(date_UTC=target_date, geometry=I_geometry, resampling="cubic")
+                    NDVI_I = rt.where(np.isnan(NDVI_I), NDVI_I_fill, NDVI_I)
 
             NDVI_I_smooth = GEOS5FP_connection.NDVI(time_UTC=time_UTC, geometry=I_geometry, resampling="cubic")
             NDVI_I = rt.where(np.isnan(NDVI_I), NDVI_I_smooth, NDVI_I)
@@ -545,7 +576,15 @@ def ET_toolbox_historical_fine_tile(
             #     directory=VIIRS_download,
             #     resampling="cubic"
             # )
-            albedo_M = vnp09.albedo(date_UTC=target_date, geometry=M_geometry, resampling="cubic")
+            albedo_M = VIIRS_shortwave_source.albedo(date_UTC=target_date, geometry=M_geometry, resampling="cubic")
+
+            if use_VIIRS_composite:
+                for days_back in range(1, VIIRS_composite_days):
+                    fill_date = target_date - timedelta(days_back)
+                    logger.info(
+                        f"gap-filling {cl.name('VNP09GA')} {cl.name('albedo')} from VIIRS on {cl.time(fill_date)} for {cl.time(target_date)}")
+                    albedo_M_fill = VIIRS_shortwave_source.albedo(date_UTC=target_date, geometry=M_geometry, resampling="cubic")
+                    albedo_M = rt.where(np.isnan(albedo_M), albedo_M_fill, albedo_M)
 
             albedo_M_smooth = GEOS5FP_connection.ALBEDO(time_UTC=time_UTC, geometry=M_geometry, resampling="cubic")
             albedo_M = rt.where(np.isnan(albedo_M), albedo_M_smooth, albedo_M)
@@ -691,6 +730,7 @@ def ET_toolbox_historical_fine_tile(
                 soil_grids_download=soil_grids_download,
                 VIIRS_download_directory=VIIRS_download_directory,
                 VIIRS_GEOS5FP_output_directory=VIIRS_GEOS5FP_output_directory,
+                VIIRS_shortwave_source=VIIRS_shortwave_source,
                 intermediate_directory=intermediate_directory,
                 preview_quality=preview_quality,
                 ANN_model=ANN_model,
