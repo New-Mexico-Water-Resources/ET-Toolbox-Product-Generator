@@ -259,42 +259,23 @@ class PTJPLSM(PTJPL):
         SWnet = rt.clip(SWin - SWout, 0, None)
         self.diagnostic(SWnet, "SWnet", date_UTC, target)
 
-        # if Rn is None or Rn_daily is None:
         if Rn is None:
-            Ea_Pa = Ea_kPa * 1000
-            Ta_K = Ta_C + 273.15
-            ST_K = ST_C + 273.15
+            Rn = self.Rn(
+                date_UTC=date_UTC,
+                target=target,
+                SWin=SWin,
+                albedo=albedo,
+                ST_C=ST_C,
+                emissivity=emissivity,
+                Ea_kPa=Ea_kPa,
+                Ta_C=Ta_C,
+                cloud_mask=cloud_mask
+            )
 
-            # calculate atmospheric emissivity
-            eta1 = 0.465 * Ea_Pa / Ta_K
-            atmospheric_emissivity = (1 - (1 + eta1) * np.exp(-(1.2 + 3 * eta1) ** 0.5))
+        self.diagnostic(Rn, "Rn", date_UTC, target)
 
-            if cloud_mask is None:
-                LWin = atmospheric_emissivity * STEFAN_BOLTZMAN_CONSTANT * Ta_K ** 4
-            else:
-                # calculate incoming longwave for clear sky and cloudy
-                LWin = rt.where(
-                    ~cloud_mask,
-                    atmospheric_emissivity * STEFAN_BOLTZMAN_CONSTANT * Ta_K ** 4,
-                    STEFAN_BOLTZMAN_CONSTANT * Ta_K ** 4
-                )
-
-            self.diagnostic(LWin, "LWin", date_UTC, target)
-
-            emissivity = rt.clip(emissivity, 0, 1)
-            self.diagnostic(emissivity, "emissivity", date_UTC, target)
-
-            # calculate outgoing longwave from land surface temperature and emissivity
-            LWout = emissivity * STEFAN_BOLTZMAN_CONSTANT * ST_K ** 4
-            self.diagnostic(LWout, "LWout", date_UTC, target)
-
-            # LWnet = rt.clip(LWin - LWout, 0, None)
-            LWnet = LWin - LWout
-            self.diagnostic(LWnet, "LWnet", date_UTC, target)
-
-            # constrain negative values of instantaneous net radiation
-            Rn = rt.clip(SWnet + LWnet, 0, None)
-            self.diagnostic(Rn, "Rn", date_UTC, target)
+        if "Rn" in output_variables:
+            results["Rn"] = Rn
 
         if Rn_daily is None:
             # integrate net radiation to daily value
@@ -308,8 +289,7 @@ class PTJPLSM(PTJPL):
             # constrain negative values of daily integrated net radiation
             Rn_daily = rt.clip(Rn_daily, 0, None)
 
-        if "Rn" in output_variables:
-            results["Rn"] = Rn
+        self.diagnostic(Rn_daily, "Rn_daily", date_UTC, target)
 
         if "Rn_daily" in output_variables:
             results["Rn_daily"] = Rn_daily
