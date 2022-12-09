@@ -430,7 +430,7 @@ class PTJPL(BESS):
         self.diagnostic(VPD_kPa, "VPD_kPa", date_UTC, target)
 
         if "VPD" in output_variables:
-            VPD_hPa = VPD_kPa / 10
+            VPD_hPa = VPD_kPa * 10
             results["VPD"] = VPD_hPa
 
         # calculate relative humidity from water vapor pressure and saturation vapor pressure
