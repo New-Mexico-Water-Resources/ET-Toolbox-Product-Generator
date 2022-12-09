@@ -27,7 +27,7 @@ from sentinel import sentinel_tile_grid
 
 logger = logging.getLogger(__name__)
 
-ET_MODEL_NAME = "PTJPLSM"
+ET_MODEL_NAME = "PTJPL"
 SWIN_MODEL_NAME = "GEOS5FP"
 RN_MODEL_NAME = "Verma"
 
