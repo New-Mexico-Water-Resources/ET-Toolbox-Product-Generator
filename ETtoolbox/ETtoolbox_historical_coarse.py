@@ -62,7 +62,12 @@ TARGET_VARIABLES = [
     "ST",
     "Ta",
     "RH",
-    "SWin"
+    "SWin",
+    "VPD",
+    "fg",
+    "fM",
+    "fSM",
+    "fT"
 ]
 
 

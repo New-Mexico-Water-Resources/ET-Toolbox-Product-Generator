@@ -427,6 +427,12 @@ class PTJPL(BESS):
         # lower bound of vapor pressure deficit is zero, negative values replaced with nodata
         VPD_kPa = rt.where(VPD_kPa < 0, np.nan, VPD_kPa)
 
+        self.diagnostic(VPD_kPa, "VPD_kPa", date_UTC, target)
+
+        if "VPD" in output_variables:
+            VPD_hPa = VPD_kPa / 10
+            results["VPD"] = VPD_hPa
+
         # calculate relative humidity from water vapor pressure and saturation vapor pressure
         # upper bound of relative humidity is one, results higher than one are capped at one
         if RH is None:
@@ -526,6 +532,9 @@ class PTJPL(BESS):
         fg = rt.clip(fAPAR / fIPAR, 0, 1)
         self.diagnostic(fg, "fg", date_UTC, target)
 
+        if "fg" in output_variables:
+            results["fg"] = fg
+
         if fAPARmax is None:
             fAPARmax = self.load_fAPARmax(geometry=geometry)
 
@@ -536,10 +545,16 @@ class PTJPL(BESS):
         fM = rt.clip(fAPAR / fAPARmax, 0.0, 1.0)
         self.diagnostic(fM, "fM", date_UTC, target)
 
+        if "fM" in output_variables:
+            results["fM"] = fM
+
         # calculate soil moisture constraint from mean relative humidity and vapor pressure deficit,
         # constrained between zero and one
         fSM = rt.clip(RH ** (VPD_kPa / BETA), 0.0, 1.0)
         self.diagnostic(fSM, "fSM", date_UTC, target)
+
+        if "fSM" in output_variables:
+            results["fSM"] = fSM
 
         if Topt is None:
             Topt = self.load_Topt(geometry=geometry)
@@ -551,6 +566,9 @@ class PTJPL(BESS):
         fT = np.exp(-(((Ta_C - Topt) / Topt) ** 2))
 
         self.diagnostic(fT, "fT", date_UTC, target)
+
+        if "fT" in output_variables:
+            results["fT"] = fT
 
         # calculate leaf area index
         with warnings.catch_warnings():
