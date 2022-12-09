@@ -288,6 +288,8 @@ class LPDAACDataPool:
         else:
             metadata_filename = f"{download_location}.xml"
 
+        logger.info(f"metadata file: {metadata_filename}")
+
         makedirs(dirname(metadata_filename), exist_ok=True)
 
         if XML_retries is None:

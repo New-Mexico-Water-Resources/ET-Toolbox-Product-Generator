@@ -425,7 +425,7 @@ def VIIRS_GEOS5FP(
                 downscale_moisture=downscale_moisture,
                 save_intermediate=save_intermediate,
                 include_preview=include_preview,
-                show_distribution=show_distribution
+                show_distribution=show_distribution,
             )
         else:
             raise ValueError(f"unrecognized model: {ET_model_name}")

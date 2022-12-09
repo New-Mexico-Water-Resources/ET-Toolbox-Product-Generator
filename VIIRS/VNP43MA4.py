@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, date
 from glob import glob
+from os import makedirs
 from os.path import exists, join
 from typing import List, Union
 from dateutil import parser
@@ -138,6 +139,31 @@ class VNP43MA4Granule(VIIRSGranule):
     def SWIR2(self) -> Raster:
         return self.reflectance(11)
 
+    @property
+    def albedo(self) -> Raster:
+        M1 = self.reflectance(1)
+        M2 = self.reflectance(2)
+        M3 = self.reflectance(3)
+        M4 = self.reflectance(4)
+        M5 = self.reflectance(5)
+        M7 = self.reflectance(7)
+        M8 = self.reflectance(8)
+        M10 = self.reflectance(10)
+        M11 = self.reflectance(11)
+
+        albedo = -0.0131 + \
+                (M1 * 0.2418) + \
+                (M2 * -0.201) + \
+                (M3 * 0.2093) + \
+                (M4 * 0.1146) + \
+                (M5 * 0.1348) + \
+                (M7 * 0.2251) + \
+                (M8 * 0.1123) + \
+                (M10 * 0.086) + \
+                (M11 * 0.0803)
+
+        return albedo
+
     def product(self, product: str) -> Raster:
         if product == "red":
             return self.red
@@ -153,6 +179,8 @@ class VNP43MA4Granule(VIIRSGranule):
             return self.SWIR1
         elif product == "SWIR2":
             return self.SWIR2
+        elif product == "albedo":
+            return self.albedo
         else:
             raise ValueError(f"unrecognized product: {product}")
 
@@ -222,6 +250,9 @@ class VNP43MA4(VIIRSDataPool):
             "VNP43MA4",
             f"{date_UTC:%Y.%m.%d}"
         )
+
+        makedirs(download_location, exist_ok=True)
+        logger.info(f"download location: {cl.dir(download_location)}")
 
         if exists(download_location):
             filenames = glob(join(download_location, f"VNP43MA4.A{date_UTC:%Y%j}.{tile}.*.h5"))
@@ -330,3 +361,6 @@ class VNP43MA4(VIIRSDataPool):
 
     def SWIR1(self, date_UTC: Union[date, str], geometry: RasterGeometry, resampling: str = "cubic") -> Raster:
         return self.product(product="SWIR1", date_UTC=date_UTC, geometry=geometry, resampling=resampling)
+
+    def albedo(self, date_UTC: Union[date, str], geometry: RasterGeometry, resampling: str = "cubic") -> Raster:
+        return self.product(product="albedo", date_UTC=date_UTC, geometry=geometry, resampling=resampling)

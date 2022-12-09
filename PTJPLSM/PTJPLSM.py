@@ -298,7 +298,7 @@ class PTJPLSM(PTJPL):
 
         if Rn_daily is None:
             # integrate net radiation to daily value
-            Rn_daily = self.daily_integration(
+            Rn_daily = self.Rn_daily(
                 Rn,
                 hour_of_day,
                 sunrise_hour,
@@ -383,6 +383,7 @@ class PTJPLSM(PTJPL):
 
         if Topt is None:
             Topt = self.load_Topt(geometry=geometry)
+            Topt = rt.where(Ta_C > Topt, Ta_C, Topt)
 
         self.diagnostic(Topt, "Topt", date_UTC, target)
 

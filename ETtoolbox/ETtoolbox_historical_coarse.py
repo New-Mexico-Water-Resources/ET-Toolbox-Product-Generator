@@ -47,6 +47,10 @@ GFS_CELL_SIZE = 27375
 LANDSAT_INITIALIZATION_DAYS = 16
 HLS_INITIALIZATION_DAYS = 10
 
+SAVE_INTERMEDIATE = True
+SHOW_DISTRIBUTION = True
+LOAD_PREVIOUS = False
+
 VIIRS_GEOS5FP_OUTPUT_DIRECTORY = "VIIRS_GEOS5FP_historical_coarse_output"
 
 TARGET_VARIABLES = [
@@ -203,9 +207,9 @@ def ET_toolbox_historical_coarse_tile(
         M_cell_size: float = M_CELL_SIZE,
         GEOS5FP_geometry: RasterGrid = None,
         GEOS5FP_cell_size: float = GEOS5FP_CELL_SIZE,
-        save_intermediate: bool = False,
-        show_distribution: bool = False,
-        load_previous: bool = True,
+        save_intermediate: bool = SAVE_INTERMEDIATE,
+        show_distribution: bool = SHOW_DISTRIBUTION,
+        load_previous: bool = LOAD_PREVIOUS,
         target_variables: List[str] = None):
     if isinstance(start_date, str):
         start_date = parser.parse(start_date).date()
