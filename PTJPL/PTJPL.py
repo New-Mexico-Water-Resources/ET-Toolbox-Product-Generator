@@ -43,6 +43,8 @@ DEFAULT_OUTPUT_VARIABLES = [
     "WUE"
 ]
 
+FLOOR_TOPT = True
+
 # Priestley-Taylor coefficient alpha
 PT_ALPHA = 1.26
 BETA = 1.0
@@ -375,6 +377,7 @@ class PTJPL(BESS):
             Rn: Raster = None,
             Rn_daily: Raster = None,
             wind_speed: Raster = None,
+            floor_Topt: Raster = FLOOR_TOPT,
             output_variables: List[str] = DEFAULT_OUTPUT_VARIABLES) -> Dict[str, Raster]:
         warnings.filterwarnings('ignore')
 
@@ -558,7 +561,9 @@ class PTJPL(BESS):
 
         if Topt is None:
             Topt = self.load_Topt(geometry=geometry)
-            Topt = rt.where(Ta_C > Topt, Ta_C, Topt)
+
+            if floor_Topt:
+                Topt = rt.where(Ta_C > Topt, Ta_C, Topt)
 
         self.diagnostic(Topt, "Topt", date_UTC, target)
 
