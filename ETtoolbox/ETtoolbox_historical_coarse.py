@@ -27,7 +27,7 @@ from sentinel import sentinel_tile_grid
 
 logger = logging.getLogger(__name__)
 
-ET_MODEL_NAME = "PTJPL"
+ET_MODEL_NAME = "PTJPLSM"
 SWIN_MODEL_NAME = "GEOS5FP"
 RN_MODEL_NAME = "Verma"
 
@@ -52,7 +52,7 @@ SAVE_INTERMEDIATE = True
 SHOW_DISTRIBUTION = True
 LOAD_PREVIOUS = False
 
-VIIRS_GEOS5FP_OUTPUT_DIRECTORY = "VIIRS_GEOS5FP_VermaRn_PTJPLboostedToptET_1km_output"
+VIIRS_GEOS5FP_OUTPUT_DIRECTORY = "VIIRS_GEOS5FP_VermaRn_PTJPLSMboostedToptET_1km_output"
 
 TARGET_VARIABLES = [
     "Rn",
@@ -69,6 +69,9 @@ TARGET_VARIABLES = [
     "fM",
     "fSM",
     "fT",
+    "fREW",
+    "fTREW",
+    "fTRM",
     "Topt"
 ]
 

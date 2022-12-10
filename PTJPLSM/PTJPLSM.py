@@ -8,7 +8,6 @@ from os.path import join, abspath, expanduser
 from typing import Callable, Dict, List
 
 import numpy as np
-from scipy.stats import zscore
 
 import raster as rt
 
@@ -25,7 +24,7 @@ from SRTM import SRTM
 from PTJPL import PTJPL
 from SoilGrids import SoilGrids
 
-from raster import Raster, RasterGeometry, RasterGrid
+from raster import Raster, RasterGeometry
 
 DEFAULT_WORKING_DIRECTORY = "."
 DEFAULT_GEOS5FP_DOWNLOAD = "GEOS5FP_download_directory"
@@ -46,6 +45,8 @@ DEFAULT_OUTPUT_VARIABLES = [
     "WUE",
     "SM"
 ]
+
+FLOOR_TOPT = True
 
 # Priestley-Taylor coefficient alpha
 PT_ALPHA = 1.26
@@ -94,6 +95,7 @@ class PTJPLSM(PTJPL):
             downscale_air: bool = DEFAULT_DOWNSCALE_AIR,
             downscale_humidity: bool = DEFAULT_DOWNSCALE_HUMIDITY,
             downscale_moisture: bool = DEFAULT_DOWNSCALE_MOISTURE,
+            floor_Topt: bool = FLOOR_TOPT,
             save_intermediate: bool = False,
             include_preview: bool = True,
             show_distribution: bool = True):
@@ -138,7 +140,8 @@ class PTJPLSM(PTJPL):
             include_preview=include_preview,
             downscale_air=downscale_air,
             downscale_humidity=downscale_humidity,
-            downscale_moisture=downscale_moisture
+            downscale_moisture=downscale_moisture,
+            floor_Topt=floor_Topt
         )
 
         self.soil_grids = soil_grids_connection
@@ -298,6 +301,9 @@ class PTJPLSM(PTJPL):
         fwet = self.fwet_from_RH(RH)
         self.diagnostic(fwet, "fwet", date_UTC, target)
 
+        if "fwet" in output_variables:
+            results["fwet"] = fwet
+
         # calculate slope of saturation to vapor pressure curve Pa/K
         delta = self.delta_from_Ta(Ta_C)
         self.diagnostic(delta, "delta", date_UTC, target)
@@ -324,6 +330,9 @@ class PTJPLSM(PTJPL):
         fg = rt.clip(fAPAR / fIPAR, 0, 1)
         self.diagnostic(fg, "fg", date_UTC, target)
 
+        if "fg" in output_variables:
+            results["fg"] = fg
+
         if fAPARmax is None:
             fAPARmax = self.load_fAPARmax(geometry=geometry)
 
@@ -333,6 +342,9 @@ class PTJPLSM(PTJPL):
         # constrained between zero and one
         fM = rt.clip(fAPAR / fAPARmax, 0.0, 1.0)
         self.diagnostic(fM, "fM", date_UTC, target)
+
+        if "fM" in output_variables:
+            results["fM"] = fM
 
         if SM is None:
             SM = self.SM(
@@ -361,16 +373,27 @@ class PTJPLSM(PTJPL):
         # fREW = (SM - WP) / (FC - WP)
         self.diagnostic(fREW, "fREW", date_UTC, target)
 
+        if "fREW" in output_variables:
+            results["fREW"] = fREW
+
         if Topt is None:
             Topt = self.load_Topt(geometry=geometry)
-            Topt = rt.where(Ta_C > Topt, Ta_C, Topt)
+
+            if self.floor_Topt:
+                Topt = rt.where(Ta_C > Topt, Ta_C, Topt)
 
         self.diagnostic(Topt, "Topt", date_UTC, target)
+
+        if "Topt" in output_variables:
+            results["Topt"] = Topt
 
         # calculate plant temperature constraint (fT) from optimal phenology
         fT = np.exp(-(((Ta_C - Topt) / Topt) ** 2))
 
         self.diagnostic(fT, "fT", date_UTC, target)
+
+        if "fT" in output_variables:
+            results["fT"] = fT
 
         # calculate leaf area index
         with warnings.catch_warnings():
@@ -459,11 +482,20 @@ class PTJPLSM(PTJPL):
         self.diagnostic(WPCH, "WPCH", date_UTC, target)
         CR = (1 - p) * (FC - WPCH) + WPCH
         self.diagnostic(CR, "CR", date_UTC, target)
+
         fTREW = rt.clip(1 - ((CR - SM) / (CR - WPCH)) ** CHscalar, 0, 1)
         self.diagnostic(fTREW, "fTREW", date_UTC, target)
+
+        if "fTREW" in output_variables:
+            results["fTREW"] = fTREW
+
         RHSM = RH ** (4 * (1 - SM) * (1 - RH))
+
         fTRM = (1 - RHSM) * fM + RHSM * rt.where(np.isnan(fTREW), 0, fTREW)
         self.diagnostic(fTRM, "fTRM", date_UTC, target)
+
+        if "fTRM" in output_variables:
+            results["fTRM"] = fTRM
 
         # calculate canopy transpiration (LEc) from priestley taylor, relative surface wetness,
         # green canopy fraction, plant temperature constraint, plant moisture constraint,

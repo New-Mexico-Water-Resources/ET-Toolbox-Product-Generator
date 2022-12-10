@@ -43,7 +43,7 @@ DEFAULT_OUTPUT_VARIABLES = [
     "WUE"
 ]
 
-FLOOR_TOPT = False
+FLOOR_TOPT = True
 
 # Priestley-Taylor coefficient alpha
 PT_ALPHA = 1.26
