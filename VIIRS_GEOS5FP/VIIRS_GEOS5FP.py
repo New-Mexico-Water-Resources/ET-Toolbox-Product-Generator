@@ -24,7 +24,7 @@ VIIRS_PRODUCTS_DIRECTORY = "VIIRS_products"
 VIIRS_GEOS5FP_OUTPUT_DIRECTORY = "VIIRS_GEOS5FP_output"
 
 USE_VIIRS_COMPOSITE = True
-VIIRS_COMPOSITE_DAYS = 8
+VIIRS_COMPOSITE_DAYS = 0
 
 DEFAULT_RESAMPLING = "cubic"
 DEFAULT_PREVIEW_QUALITY = 20
@@ -174,6 +174,7 @@ def VIIRS_GEOS5FP(
         GEOS5FP_connection: GEOS5FP = None,
         GEOS5FP_download: str = None,
         GEOS5FP_products: str = None,
+        GEOS5FP_offline_processing: bool = True,
         GEDI_connection: GEDICanopyHeight = None,
         GEDI_download: str = None,
         ORNL_connection: MODISCI = None,
@@ -291,13 +292,14 @@ def VIIRS_GEOS5FP(
             logger.exception(e)
             raise GEOS5FPNotAvailableError("unable to connect to GEOS-5 FP")
 
-    latest_GEOS5FP_time = GEOS5FP_connection.latest_time_available
-    logger.info(f"latest GEOS-5 FP time available: {latest_GEOS5FP_time}")
-    logger.info(f"processing time: {time_UTC}")
+    if not GEOS5FP_offline_processing:
+        latest_GEOS5FP_time = GEOS5FP_connection.latest_time_available
+        logger.info(f"latest GEOS-5 FP time available: {latest_GEOS5FP_time}")
+        logger.info(f"processing time: {time_UTC}")
 
-    if time_UTC.strftime("%Y-%m-%d %H:%M:%S") > latest_GEOS5FP_time.strftime("%Y-%m-%d %H:%M:%S"):
-        raise GEOS5FPNotAvailableError(
-            f"VIIRS GEOS-5 FP target time {time_UTC} is past latest available GEOS-5 FP time {latest_GEOS5FP_time}")
+        if time_UTC.strftime("%Y-%m-%d %H:%M:%S") > latest_GEOS5FP_time.strftime("%Y-%m-%d %H:%M:%S"):
+            raise GEOS5FPNotAvailableError(
+                f"VIIRS GEOS-5 FP target time {time_UTC} is past latest available GEOS-5 FP time {latest_GEOS5FP_time}")
 
     if ST_C is None:
         logger.info(
@@ -622,7 +624,6 @@ def VIIRS_GEOS5FP(
             RH=RH,
             Rn=Rn,
             water=water,
-            floor_Topt=floor_Topt,
             output_variables=target_variables
         )
     else:
