@@ -68,7 +68,8 @@ TARGET_VARIABLES = [
     "fg",
     "fM",
     "fSM",
-    "fT"
+    "fT",
+    "Topt"
 ]
 
 

@@ -568,6 +568,9 @@ class PTJPL(BESS):
 
         self.diagnostic(Topt, "Topt", date_UTC, target)
 
+        if "Topt" in output_variables:
+            results["Topt"] = Topt
+
         # calculate plant temperature constraint (fT) from optimal phenology
         fT = np.exp(-(((Ta_C - Topt) / Topt) ** 2))
 
