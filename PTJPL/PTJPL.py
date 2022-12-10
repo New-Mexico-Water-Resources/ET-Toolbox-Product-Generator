@@ -43,7 +43,7 @@ DEFAULT_OUTPUT_VARIABLES = [
     "WUE"
 ]
 
-FLOOR_TOPT = True
+FLOOR_TOPT = False
 
 # Priestley-Taylor coefficient alpha
 PT_ALPHA = 1.26
@@ -92,6 +92,7 @@ class PTJPL(BESS):
             downscale_air: bool = DEFAULT_DOWNSCALE_AIR,
             downscale_humidity: bool = DEFAULT_DOWNSCALE_HUMIDITY,
             downscale_moisture: bool = DEFAULT_DOWNSCALE_MOISTURE,
+            floor_Topt: bool = FLOOR_TOPT,
             save_intermediate: bool = False,
             include_preview: bool = True,
             show_distribution: bool = True):
@@ -135,6 +136,7 @@ class PTJPL(BESS):
 
         self.downscale_air = downscale_air
         self.downscale_humidity = downscale_humidity
+        self.floor_Topt = floor_Topt
 
     def load_Topt(self, geometry: RasterGeometry) -> Raster:
         SCALE_FACTOR = 0.01
@@ -377,7 +379,6 @@ class PTJPL(BESS):
             Rn: Raster = None,
             Rn_daily: Raster = None,
             wind_speed: Raster = None,
-            floor_Topt: Raster = FLOOR_TOPT,
             output_variables: List[str] = DEFAULT_OUTPUT_VARIABLES) -> Dict[str, Raster]:
         warnings.filterwarnings('ignore')
 
@@ -562,7 +563,7 @@ class PTJPL(BESS):
         if Topt is None:
             Topt = self.load_Topt(geometry=geometry)
 
-            if floor_Topt:
+            if self.floor_Topt:
                 Topt = rt.where(Ta_C > Topt, Ta_C, Topt)
 
         self.diagnostic(Topt, "Topt", date_UTC, target)

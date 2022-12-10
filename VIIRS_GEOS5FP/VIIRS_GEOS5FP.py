@@ -15,6 +15,7 @@ from VIIRS.VNP21A1D import VNP21A1D
 from VIIRS.VNP43MA4 import VNP43MA4
 from downscaling import downscale_air_temperature, downscale_soil_moisture, downscale_vapor_pressure_deficit, \
     downscale_relative_humidity, bias_correct
+from PTJPL import FLOOR_TOPT
 
 ET_MODEL_NAME = "PTJPLSM"
 
@@ -188,6 +189,7 @@ def VIIRS_GEOS5FP(
         downscale_air: bool = DEFAULT_DOWNSCALE_AIR,
         downscale_humidity: bool = DEFAULT_DOWNSCALE_HUMIDITY,
         downscale_moisture: bool = DEFAULT_DOWNSCALE_MOISTURE,
+        floor_Topt: bool = FLOOR_TOPT,
         save_intermediate: bool = False,
         include_preview: bool = True,
         show_distribution: bool = True,
@@ -423,6 +425,7 @@ def VIIRS_GEOS5FP(
                 downscale_air=downscale_air,
                 downscale_humidity=downscale_humidity,
                 downscale_moisture=downscale_moisture,
+                floor_Topt=floor_Topt,
                 save_intermediate=save_intermediate,
                 include_preview=include_preview,
                 show_distribution=show_distribution,
@@ -619,6 +622,7 @@ def VIIRS_GEOS5FP(
             RH=RH,
             Rn=Rn,
             water=water,
+            floor_Topt=floor_Topt,
             output_variables=target_variables
         )
     else:

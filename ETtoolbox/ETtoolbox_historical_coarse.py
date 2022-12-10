@@ -34,6 +34,7 @@ RN_MODEL_NAME = "Verma"
 DOWNSCALE_AIR = False
 DOWNSCALE_HUMIDITY = False
 DOWNSCALE_MOISTURE = False
+FLOOR_TOPT = False
 
 USE_VIIRS_COMPOSITE = True
 VIIRS_COMPOSITE_DAYS = 8
@@ -51,7 +52,7 @@ SAVE_INTERMEDIATE = True
 SHOW_DISTRIBUTION = True
 LOAD_PREVIOUS = False
 
-VIIRS_GEOS5FP_OUTPUT_DIRECTORY = "VIIRS_GEOS5FP_historical_coarse_output"
+VIIRS_GEOS5FP_OUTPUT_DIRECTORY = "VIIRS_GEOS5FP_VermaRn_PTJPLfreeToptET_1km_output"
 
 TARGET_VARIABLES = [
     "Rn",
@@ -354,9 +355,10 @@ def ET_toolbox_historical_coarse_tile(
                 water=water_M,
                 coarse_cell_size=GEOS5FP_cell_size,
                 target_variables=target_variables,
-                downscale_air=False,
-                downscale_humidity=False,
-                downscale_moisture=False,
+                downscale_air=DOWNSCALE_AIR,
+                downscale_humidity=DOWNSCALE_HUMIDITY,
+                downscale_moisture=DOWNSCALE_MOISTURE,
+                floor_Topt=FLOOR_TOPT,
                 resampling=resampling,
                 show_distribution=show_distribution,
                 load_previous=load_previous,
