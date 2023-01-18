@@ -35,6 +35,8 @@ ET_MODEL_NAME = "PTJPLSM"
 SWIN_MODEL_NAME = "GEOS5FP"
 RN_MODEL_NAME = "Verma"
 
+FLOOR_TOPT = True
+
 DOWNSCALE_AIR = False
 DOWNSCALE_HUMIDITY = False
 DOWNSCALE_MOISTURE = False
@@ -752,6 +754,7 @@ def ET_toolbox_historical_fine_tile(
                 downscale_air=downscale_air,
                 downscale_humidity=downscale_humidity,
                 downscale_moisture=downscale_moisture,
+                floor_Topt=FLOOR_TOPT,
                 resampling=resampling,
                 show_distribution=show_distribution,
                 load_previous=load_previous,
