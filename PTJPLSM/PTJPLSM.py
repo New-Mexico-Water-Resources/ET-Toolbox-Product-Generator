@@ -439,7 +439,7 @@ class PTJPLSM(PTJPL):
 
         W = rt.clip(W, 0, W_MAX_PROPORTION * Rn)
         W = W.mask(water)
-        self.diagnostic(W, "W", date_UTC, target)
+        self.diagnostic(W, "W", date_UTC, target, blank_OK=True)
 
         # calculate soil evaporation (LEs) from relative surface wetness, soil moisture constraint,
         # priestley taylor coefficient, epsilon = delta / (delta + gamma), net radiation of the soil,
@@ -456,7 +456,7 @@ class PTJPLSM(PTJPL):
         # calculate potential evapotranspiration (pET) from net radiation, and soil heat flux
 
         PET_water = PT_ALPHA * epsilon * (Rn - W)
-        self.diagnostic(PET_water, "PET_water", date_UTC, target)
+        self.diagnostic(PET_water, "PET_water", date_UTC, target, blank_OK=True)
         PET_land = PT_ALPHA * epsilon * (Rn - G)
         self.diagnostic(PET_land, "PET_land", date_UTC, target)
 
