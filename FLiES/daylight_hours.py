@@ -3,7 +3,8 @@ This module calculates sunrise hour and daylight hours.
 
 Developed by Gregory Halverson in the Jet Propulsion Laboratory Year-Round Internship Program (Columbus Technologies and Services, ANRE Tech.), in coordination with the ECOSTRESS mission and master's thesis studies at California State University, Northridge.
 """
-from numpy import tan, cos, sin, pi, arccos, where, radians, degrees, warnings
+import warnings
+from numpy import tan, cos, sin, pi, arccos, where, radians, degrees
 
 __author__ = 'Gregory Halverson'
 
