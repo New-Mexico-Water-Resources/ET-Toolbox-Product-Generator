@@ -24,6 +24,7 @@ DEFAULT_DOWNSCALE_HUMIDITY = False
 DEFAULT_DOWNSCALE_MOISTURE = False
 DEFAULT_COARSE_CELL_SIZE = 27375
 DEFAULT_TARGET_VARIABLES = ["LE", "ET", "ESI"]
+FLOOR_TOPT = True
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +173,7 @@ def LANCE_GEOS5FP_NRT(
         downscale_air: bool = DEFAULT_DOWNSCALE_AIR,
         downscale_humidity: bool = DEFAULT_DOWNSCALE_HUMIDITY,
         downscale_moisture: bool = DEFAULT_DOWNSCALE_MOISTURE,
+        floor_Topt: bool = FLOOR_TOPT,
         save_intermediate: bool = False,
         include_preview: bool = True,
         show_distribution: bool = True,
@@ -343,6 +345,7 @@ def LANCE_GEOS5FP_NRT(
                 downscale_air=downscale_air,
                 downscale_humidity=downscale_humidity,
                 downscale_moisture=downscale_moisture,
+                floor_Topt=floor_Topt,
                 save_intermediate=save_intermediate,
                 include_preview=include_preview,
                 show_distribution=show_distribution
@@ -368,6 +371,7 @@ def LANCE_GEOS5FP_NRT(
                 downscale_air=downscale_air,
                 downscale_humidity=downscale_humidity,
                 downscale_moisture=downscale_moisture,
+                floor_Topt=floor_Topt,
                 save_intermediate=save_intermediate,
                 include_preview=include_preview,
                 show_distribution=show_distribution

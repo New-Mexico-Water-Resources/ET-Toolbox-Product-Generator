@@ -402,6 +402,7 @@ def VIIRS_GEOS5FP(
                 downscale_air=downscale_air,
                 downscale_humidity=downscale_humidity,
                 downscale_moisture=downscale_moisture,
+                floor_Topt=floor_Topt,
                 save_intermediate=save_intermediate,
                 include_preview=include_preview,
                 show_distribution=show_distribution
