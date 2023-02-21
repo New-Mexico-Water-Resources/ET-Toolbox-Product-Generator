@@ -8,7 +8,6 @@ from os.path import join, abspath, expanduser
 from typing import Callable, Dict, List
 
 import numpy as np
-from scipy.stats import zscore
 
 import raster as rt
 
@@ -25,7 +24,7 @@ from SRTM import SRTM
 from PTJPL import PTJPL
 from SoilGrids import SoilGrids
 
-from raster import Raster, RasterGeometry, RasterGrid
+from raster import Raster, RasterGeometry
 
 DEFAULT_WORKING_DIRECTORY = "."
 DEFAULT_GEOS5FP_DOWNLOAD = "GEOS5FP_download_directory"
@@ -46,6 +45,8 @@ DEFAULT_OUTPUT_VARIABLES = [
     "WUE",
     "SM"
 ]
+
+FLOOR_TOPT = True
 
 # Priestley-Taylor coefficient alpha
 PT_ALPHA = 1.26
@@ -94,6 +95,7 @@ class PTJPLSM(PTJPL):
             downscale_air: bool = DEFAULT_DOWNSCALE_AIR,
             downscale_humidity: bool = DEFAULT_DOWNSCALE_HUMIDITY,
             downscale_moisture: bool = DEFAULT_DOWNSCALE_MOISTURE,
+            floor_Topt: bool = FLOOR_TOPT,
             save_intermediate: bool = False,
             include_preview: bool = True,
             show_distribution: bool = True):
@@ -138,7 +140,8 @@ class PTJPLSM(PTJPL):
             include_preview=include_preview,
             downscale_air=downscale_air,
             downscale_humidity=downscale_humidity,
-            downscale_moisture=downscale_moisture
+            downscale_moisture=downscale_moisture,
+            floor_Topt=floor_Topt
         )
 
         self.soil_grids = soil_grids_connection
@@ -259,46 +262,27 @@ class PTJPLSM(PTJPL):
         SWnet = rt.clip(SWin - SWout, 0, None)
         self.diagnostic(SWnet, "SWnet", date_UTC, target)
 
-        # if Rn is None or Rn_daily is None:
         if Rn is None:
-            Ea_Pa = Ea_kPa * 1000
-            Ta_K = Ta_C + 273.15
-            ST_K = ST_C + 273.15
+            Rn = self.Rn(
+                date_UTC=date_UTC,
+                target=target,
+                SWin=SWin,
+                albedo=albedo,
+                ST_C=ST_C,
+                emissivity=emissivity,
+                Ea_kPa=Ea_kPa,
+                Ta_C=Ta_C,
+                cloud_mask=cloud_mask
+            )
 
-            # calculate atmospheric emissivity
-            eta1 = 0.465 * Ea_Pa / Ta_K
-            atmospheric_emissivity = (1 - (1 + eta1) * np.exp(-(1.2 + 3 * eta1) ** 0.5))
+        self.diagnostic(Rn, "Rn", date_UTC, target)
 
-            if cloud_mask is None:
-                LWin = atmospheric_emissivity * STEFAN_BOLTZMAN_CONSTANT * Ta_K ** 4
-            else:
-                # calculate incoming longwave for clear sky and cloudy
-                LWin = rt.where(
-                    ~cloud_mask,
-                    atmospheric_emissivity * STEFAN_BOLTZMAN_CONSTANT * Ta_K ** 4,
-                    STEFAN_BOLTZMAN_CONSTANT * Ta_K ** 4
-                )
-
-            self.diagnostic(LWin, "LWin", date_UTC, target)
-
-            emissivity = rt.clip(emissivity, 0, 1)
-            self.diagnostic(emissivity, "emissivity", date_UTC, target)
-
-            # calculate outgoing longwave from land surface temperature and emissivity
-            LWout = emissivity * STEFAN_BOLTZMAN_CONSTANT * ST_K ** 4
-            self.diagnostic(LWout, "LWout", date_UTC, target)
-
-            # LWnet = rt.clip(LWin - LWout, 0, None)
-            LWnet = LWin - LWout
-            self.diagnostic(LWnet, "LWnet", date_UTC, target)
-
-            # constrain negative values of instantaneous net radiation
-            Rn = rt.clip(SWnet + LWnet, 0, None)
-            self.diagnostic(Rn, "Rn", date_UTC, target)
+        if "Rn" in output_variables:
+            results["Rn"] = Rn
 
         if Rn_daily is None:
             # integrate net radiation to daily value
-            Rn_daily = self.daily_integration(
+            Rn_daily = self.Rn_daily(
                 Rn,
                 hour_of_day,
                 sunrise_hour,
@@ -308,8 +292,7 @@ class PTJPLSM(PTJPL):
             # constrain negative values of daily integrated net radiation
             Rn_daily = rt.clip(Rn_daily, 0, None)
 
-        if "Rn" in output_variables:
-            results["Rn"] = Rn
+        self.diagnostic(Rn_daily, "Rn_daily", date_UTC, target)
 
         if "Rn_daily" in output_variables:
             results["Rn_daily"] = Rn_daily
@@ -317,6 +300,9 @@ class PTJPLSM(PTJPL):
         # calculate relative surface wetness from relative humidity
         fwet = self.fwet_from_RH(RH)
         self.diagnostic(fwet, "fwet", date_UTC, target)
+
+        if "fwet" in output_variables:
+            results["fwet"] = fwet
 
         # calculate slope of saturation to vapor pressure curve Pa/K
         delta = self.delta_from_Ta(Ta_C)
@@ -344,6 +330,9 @@ class PTJPLSM(PTJPL):
         fg = rt.clip(fAPAR / fIPAR, 0, 1)
         self.diagnostic(fg, "fg", date_UTC, target)
 
+        if "fg" in output_variables:
+            results["fg"] = fg
+
         if fAPARmax is None:
             fAPARmax = self.load_fAPARmax(geometry=geometry)
 
@@ -353,6 +342,9 @@ class PTJPLSM(PTJPL):
         # constrained between zero and one
         fM = rt.clip(fAPAR / fAPARmax, 0.0, 1.0)
         self.diagnostic(fM, "fM", date_UTC, target)
+
+        if "fM" in output_variables:
+            results["fM"] = fM
 
         if SM is None:
             SM = self.SM(
@@ -381,15 +373,27 @@ class PTJPLSM(PTJPL):
         # fREW = (SM - WP) / (FC - WP)
         self.diagnostic(fREW, "fREW", date_UTC, target)
 
+        if "fREW" in output_variables:
+            results["fREW"] = fREW
+
         if Topt is None:
             Topt = self.load_Topt(geometry=geometry)
 
+            if self.floor_Topt:
+                Topt = rt.where(Ta_C > Topt, Ta_C, Topt)
+
         self.diagnostic(Topt, "Topt", date_UTC, target)
+
+        if "Topt" in output_variables:
+            results["Topt"] = Topt
 
         # calculate plant temperature constraint (fT) from optimal phenology
         fT = np.exp(-(((Ta_C - Topt) / Topt) ** 2))
 
         self.diagnostic(fT, "fT", date_UTC, target)
+
+        if "fT" in output_variables:
+            results["fT"] = fT
 
         # calculate leaf area index
         with warnings.catch_warnings():
@@ -435,7 +439,7 @@ class PTJPLSM(PTJPL):
 
         W = rt.clip(W, 0, W_MAX_PROPORTION * Rn)
         W = W.mask(water)
-        self.diagnostic(W, "W", date_UTC, target)
+        self.diagnostic(W, "W", date_UTC, target, blank_OK=True)
 
         # calculate soil evaporation (LEs) from relative surface wetness, soil moisture constraint,
         # priestley taylor coefficient, epsilon = delta / (delta + gamma), net radiation of the soil,
@@ -452,7 +456,7 @@ class PTJPLSM(PTJPL):
         # calculate potential evapotranspiration (pET) from net radiation, and soil heat flux
 
         PET_water = PT_ALPHA * epsilon * (Rn - W)
-        self.diagnostic(PET_water, "PET_water", date_UTC, target)
+        self.diagnostic(PET_water, "PET_water", date_UTC, target, blank_OK=True)
         PET_land = PT_ALPHA * epsilon * (Rn - G)
         self.diagnostic(PET_land, "PET_land", date_UTC, target)
 
@@ -478,11 +482,20 @@ class PTJPLSM(PTJPL):
         self.diagnostic(WPCH, "WPCH", date_UTC, target)
         CR = (1 - p) * (FC - WPCH) + WPCH
         self.diagnostic(CR, "CR", date_UTC, target)
+
         fTREW = rt.clip(1 - ((CR - SM) / (CR - WPCH)) ** CHscalar, 0, 1)
         self.diagnostic(fTREW, "fTREW", date_UTC, target)
+
+        if "fTREW" in output_variables:
+            results["fTREW"] = fTREW
+
         RHSM = RH ** (4 * (1 - SM) * (1 - RH))
+
         fTRM = (1 - RHSM) * fM + RHSM * rt.where(np.isnan(fTREW), 0, fTREW)
         self.diagnostic(fTRM, "fTRM", date_UTC, target)
+
+        if "fTRM" in output_variables:
+            results["fTRM"] = fTRM
 
         # calculate canopy transpiration (LEc) from priestley taylor, relative surface wetness,
         # green canopy fraction, plant temperature constraint, plant moisture constraint,

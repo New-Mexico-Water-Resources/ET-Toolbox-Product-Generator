@@ -3,7 +3,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - armadillo
   - astropy
   - beautifulsoup4
   - cmake
@@ -26,7 +25,6 @@ dependencies:
   - jupyter
   - keras
   - matplotlib
-  - mgrs
   - netcdf4
   - nose
   - pybind11
@@ -41,6 +39,7 @@ dependencies:
   - requests
   - scikit-image
   - setuptools<58
+  - shapely<2.0.0
   - tensorflow
   - termcolor
   - untangle
@@ -50,6 +49,7 @@ dependencies:
   - xtensor-python
   - wget
   - pip:
+      - mgrs
       - pybind11_cmake
       - pycksum
       - pygrib

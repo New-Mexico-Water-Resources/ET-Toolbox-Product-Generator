@@ -29,13 +29,14 @@ from sentinel import sentinel_tile_grid
 
 logger = logging.getLogger(__name__)
 
-ET_MODEL_NAME = "PTJPL"
+ET_MODEL_NAME = "PTJPLSM"
 SWIN_MODEL_NAME = "GEOS5FP"
 RN_MODEL_NAME = "Verma"
 
-DOWNSCALE_AIR = False
-DOWNSCALE_HUMIDITY = False
-DOWNSCALE_MOISTURE = False
+DOWNSCALE_AIR = True
+DOWNSCALE_HUMIDITY = True
+DOWNSCALE_MOISTURE = True
+FLOOR_TOPT = True
 
 STATIC_DIRECTORY = "PTJPL_static"
 SRTM_DIRECTORY = "SRTM_download_directory"
@@ -175,6 +176,7 @@ def ET_toolbox_hindcast_forecast_tile(
         downscale_air: bool = DOWNSCALE_AIR,
         downscale_humidity: bool = DOWNSCALE_HUMIDITY,
         downscale_moisture: bool = DOWNSCALE_MOISTURE,
+        floor_Topt: bool = FLOOR_TOPT,
         apply_GEOS5FP_GFS_bias_correction: bool = True,
         save_intermediate: bool = False,
         show_distribution: bool = False,
@@ -746,6 +748,7 @@ def ET_toolbox_hindcast_forecast_tile(
                 downscale_air=downscale_air,
                 downscale_humidity=downscale_humidity,
                 downscale_moisture=downscale_moisture,
+                floor_Topt=floor_Topt,
                 resampling=resampling,
                 show_distribution=show_distribution,
                 load_previous=load_previous,

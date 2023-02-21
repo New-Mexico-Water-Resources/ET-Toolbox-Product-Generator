@@ -99,7 +99,8 @@ class Model:
             image: Raster,
             variable: str,
             date_UTC: date or str,
-            target: str):
+            target: str,
+            blank_OK: bool = False):
         if self.show_distribution:
             unique = np.unique(image)
             nan_proportion = np.count_nonzero(np.isnan(image)) / np.size(image)
@@ -152,7 +153,7 @@ class Model:
                 else:
                     logger.info(message)
 
-            if nan_proportion == 1:
+            if nan_proportion == 1 and not blank_OK:
                 raise BlankOutputError(f"variable {variable} on {date_UTC:%Y-%m-%d} at {target} is a blank image")
 
     def load_intermediate(
@@ -199,6 +200,7 @@ class Model:
             image: Raster,
             variable: str,
             date_UTC: date or str,
-            target: str):
-        self.check_distribution(image=image, variable=variable, date_UTC=date_UTC, target=target)
+            target: str,
+            blank_OK: bool = False):
+        self.check_distribution(image=image, variable=variable, date_UTC=date_UTC, target=target, blank_OK=blank_OK)
         self.write_intermediate(image=image, variable=variable, date_UTC=date_UTC, target=target)

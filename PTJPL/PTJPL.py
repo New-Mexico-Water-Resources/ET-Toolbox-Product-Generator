@@ -9,7 +9,7 @@ from typing import Callable, Dict, List
 
 import numpy as np
 from scipy.stats import zscore
-
+from datetime import date
 import raster as rt
 
 from BESS import BESS, DEFAULT_DOWNSCALE_AIR, DEFAULT_DOWNSCALE_HUMIDITY, DEFAULT_DOWNSCALE_MOISTURE
@@ -43,6 +43,8 @@ DEFAULT_OUTPUT_VARIABLES = [
     "WUE"
 ]
 
+FLOOR_TOPT = True
+
 # Priestley-Taylor coefficient alpha
 PT_ALPHA = 1.26
 BETA = 1.0
@@ -60,6 +62,7 @@ PSYCHROMETRIC_GAMMA = 0.0662  # Pa/K
 KRN = 0.6
 KPAR = 0.5
 
+STEFAN_BOLTZMAN_CONSTANT = 5.67036713e-8  # SI units watts per square meter per kelvin to the fourth
 
 class GEOS5FPNotAvailableError(IOError):
     pass
@@ -89,6 +92,7 @@ class PTJPL(BESS):
             downscale_air: bool = DEFAULT_DOWNSCALE_AIR,
             downscale_humidity: bool = DEFAULT_DOWNSCALE_HUMIDITY,
             downscale_moisture: bool = DEFAULT_DOWNSCALE_MOISTURE,
+            floor_Topt: bool = FLOOR_TOPT,
             save_intermediate: bool = False,
             include_preview: bool = True,
             show_distribution: bool = True):
@@ -132,6 +136,7 @@ class PTJPL(BESS):
 
         self.downscale_air = downscale_air
         self.downscale_humidity = downscale_humidity
+        self.floor_Topt = floor_Topt
 
     def load_Topt(self, geometry: RasterGeometry) -> Raster:
         SCALE_FACTOR = 0.01
@@ -295,6 +300,65 @@ class PTJPL(BESS):
         self.logger.info("retrieving GEOS-5 FP wind speed raster in meters per second")
         return self.GEOS5FP_connection.wind_speed(time_UTC=time_UTC, geometry=geometry, resampling=self.resampling)
 
+    def Rn(
+            self,
+            date_UTC: date,
+            target: str,
+            SWin: Raster,
+            albedo: Raster,
+            ST_C: Raster,
+            emissivity: Raster,
+            Ea_kPa: Raster,
+            Ta_C: Raster,
+            cloud_mask: Raster) -> Raster:
+        Ea_Pa = Ea_kPa * 1000
+        Ta_K = Ta_C + 273.15
+        ST_K = ST_C + 273.15
+
+        albedo = rt.clip(albedo, 0, 1)
+        self.diagnostic(albedo, "albedo", date_UTC, target)
+
+        # calculate outgoing shortwave from incoming shortwave and albedo
+        SWout = rt.clip(SWin * albedo, 0, None)
+        self.diagnostic(SWout, "SWout", date_UTC, target)
+
+        # calculate instantaneous net radiation from components
+        SWnet = rt.clip(SWin - SWout, 0, None)
+        self.diagnostic(SWnet, "SWnet", date_UTC, target)
+
+        # calculate atmospheric emissivity
+        eta1 = 0.465 * Ea_Pa / Ta_K
+        atmospheric_emissivity = (1 - (1 + eta1) * np.exp(-(1.2 + 3 * eta1) ** 0.5))
+
+        if cloud_mask is None:
+            LWin = atmospheric_emissivity * STEFAN_BOLTZMAN_CONSTANT * Ta_K ** 4
+        else:
+            # calculate incoming longwave for clear sky and cloudy
+            LWin = rt.where(
+                ~cloud_mask,
+                atmospheric_emissivity * STEFAN_BOLTZMAN_CONSTANT * Ta_K ** 4,
+                STEFAN_BOLTZMAN_CONSTANT * Ta_K ** 4
+            )
+
+        self.diagnostic(LWin, "LWin", date_UTC, target)
+
+        emissivity = rt.clip(emissivity, 0, 1)
+        self.diagnostic(emissivity, "emissivity", date_UTC, target)
+
+        # calculate outgoing longwave from land surface temperature and emissivity
+        LWout = emissivity * STEFAN_BOLTZMAN_CONSTANT * ST_K ** 4
+        self.diagnostic(LWout, "LWout", date_UTC, target)
+
+        # LWnet = rt.clip(LWin - LWout, 0, None)
+        LWnet = LWin - LWout
+        self.diagnostic(LWnet, "LWnet", date_UTC, target)
+
+        # constrain negative values of instantaneous net radiation
+        Rn = rt.clip(SWnet + LWnet, 0, None)
+        self.diagnostic(Rn, "Rn", date_UTC, target)
+
+        return Rn
+
     def PTJPL(
             self,
             geometry: RasterGrid,
@@ -316,8 +380,6 @@ class PTJPL(BESS):
             Rn_daily: Raster = None,
             wind_speed: Raster = None,
             output_variables: List[str] = DEFAULT_OUTPUT_VARIABLES) -> Dict[str, Raster]:
-
-        STEFAN_BOLTZMAN_CONSTANT = 5.67036713e-8  # SI units watts per square meter per kelvin to the fourth
         warnings.filterwarnings('ignore')
 
         results = {}
@@ -369,6 +431,12 @@ class PTJPL(BESS):
         # lower bound of vapor pressure deficit is zero, negative values replaced with nodata
         VPD_kPa = rt.where(VPD_kPa < 0, np.nan, VPD_kPa)
 
+        self.diagnostic(VPD_kPa, "VPD_kPa", date_UTC, target)
+
+        if "VPD" in output_variables:
+            VPD_hPa = VPD_kPa * 10
+            results["VPD"] = VPD_hPa
+
         # calculate relative humidity from water vapor pressure and saturation vapor pressure
         # upper bound of relative humidity is one, results higher than one are capped at one
         if RH is None:
@@ -403,46 +471,27 @@ class PTJPL(BESS):
         SWnet = rt.clip(SWin - SWout, 0, None)
         self.diagnostic(SWnet, "SWnet", date_UTC, target)
 
-        # if Rn is None or Rn_daily is None:
         if Rn is None:
-            Ea_Pa = Ea_kPa * 1000
-            Ta_K = Ta_C + 273.15
-            ST_K = ST_C + 273.15
+            Rn = self.Rn(
+                date_UTC=date_UTC,
+                target=target,
+                SWin=SWin,
+                albedo=albedo,
+                ST_C=ST_C,
+                emissivity=emissivity,
+                Ea_kPa=Ea_kPa,
+                Ta_C=Ta_C,
+                cloud_mask=cloud_mask
+            )
 
-            # calculate atmospheric emissivity
-            eta1 = 0.465 * Ea_Pa / Ta_K
-            atmospheric_emissivity = (1 - (1 + eta1) * np.exp(-(1.2 + 3 * eta1) ** 0.5))
+        self.diagnostic(Rn, "Rn", date_UTC, target)
 
-            if cloud_mask is None:
-                LWin = atmospheric_emissivity * STEFAN_BOLTZMAN_CONSTANT * Ta_K ** 4
-            else:
-                # calculate incoming longwave for clear sky and cloudy
-                LWin = rt.where(
-                    ~cloud_mask,
-                    atmospheric_emissivity * STEFAN_BOLTZMAN_CONSTANT * Ta_K ** 4,
-                    STEFAN_BOLTZMAN_CONSTANT * Ta_K ** 4
-                )
-
-            self.diagnostic(LWin, "LWin", date_UTC, target)
-
-            emissivity = rt.clip(emissivity, 0, 1)
-            self.diagnostic(emissivity, "emissivity", date_UTC, target)
-
-            # calculate outgoing longwave from land surface temperature and emissivity
-            LWout = emissivity * STEFAN_BOLTZMAN_CONSTANT * ST_K ** 4
-            self.diagnostic(LWout, "LWout", date_UTC, target)
-
-            # LWnet = rt.clip(LWin - LWout, 0, None)
-            LWnet = LWin - LWout
-            self.diagnostic(LWnet, "LWnet", date_UTC, target)
-
-            # constrain negative values of instantaneous net radiation
-            Rn = rt.clip(SWnet + LWnet, 0, None)
-            self.diagnostic(Rn, "Rn", date_UTC, target)
+        if "Rn" in output_variables:
+            results["Rn"] = Rn
 
         if Rn_daily is None:
             # integrate net radiation to daily value
-            Rn_daily = self.daily_integration(
+            Rn_daily = self.Rn_daily(
                 Rn,
                 hour_of_day,
                 sunrise_hour,
@@ -452,8 +501,7 @@ class PTJPL(BESS):
             # constrain negative values of daily integrated net radiation
             Rn_daily = rt.clip(Rn_daily, 0, None)
 
-        if "Rn" in output_variables:
-            results["Rn"] = Rn
+        self.diagnostic(Rn_daily, "Rn_daily", date_UTC, target)
 
         if "Rn_daily" in output_variables:
             results["Rn_daily"] = Rn_daily
@@ -488,6 +536,9 @@ class PTJPL(BESS):
         fg = rt.clip(fAPAR / fIPAR, 0, 1)
         self.diagnostic(fg, "fg", date_UTC, target)
 
+        if "fg" in output_variables:
+            results["fg"] = fg
+
         if fAPARmax is None:
             fAPARmax = self.load_fAPARmax(geometry=geometry)
 
@@ -498,20 +549,35 @@ class PTJPL(BESS):
         fM = rt.clip(fAPAR / fAPARmax, 0.0, 1.0)
         self.diagnostic(fM, "fM", date_UTC, target)
 
+        if "fM" in output_variables:
+            results["fM"] = fM
+
         # calculate soil moisture constraint from mean relative humidity and vapor pressure deficit,
         # constrained between zero and one
         fSM = rt.clip(RH ** (VPD_kPa / BETA), 0.0, 1.0)
         self.diagnostic(fSM, "fSM", date_UTC, target)
 
+        if "fSM" in output_variables:
+            results["fSM"] = fSM
+
         if Topt is None:
             Topt = self.load_Topt(geometry=geometry)
 
+            if self.floor_Topt:
+                Topt = rt.where(Ta_C > Topt, Ta_C, Topt)
+
         self.diagnostic(Topt, "Topt", date_UTC, target)
+
+        if "Topt" in output_variables:
+            results["Topt"] = Topt
 
         # calculate plant temperature constraint (fT) from optimal phenology
         fT = np.exp(-(((Ta_C - Topt) / Topt) ** 2))
 
         self.diagnostic(fT, "fT", date_UTC, target)
+
+        if "fT" in output_variables:
+            results["fT"] = fT
 
         # calculate leaf area index
         with warnings.catch_warnings():

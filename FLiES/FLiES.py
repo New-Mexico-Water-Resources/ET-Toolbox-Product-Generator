@@ -17,6 +17,8 @@ from dateutil import parser
 from scipy.stats import zscore
 
 import cl
+from FLiES.daylight_hours import day_angle_rad_from_doy, solar_dec_deg_from_day_angle_rad
+from FLiES.solar_zenith_angle import sza_deg_from_lat_dec_hour
 from model.model import Model
 
 with warnings.catch_warnings():
@@ -186,14 +188,25 @@ class FLiES(Model):
         :param hour: hour of day
         :return: solar zenith angle in degrees
         """
-        day_angle = np.radians((2 * np.pi * (day_of_year - 1)) / 365)
-        lat = np.radians(geometry.lat)
-        dec = np.radians((0.006918 - 0.399912 * np.cos(day_angle) + 0.070257 * np.sin(day_angle) - 0.006758 * np.cos(
-            2 * day_angle) + 0.000907 * np.sin(2 * day_angle) - 0.002697 * np.cos(3 * day_angle) + 0.00148 * np.sin(
-            3 * day_angle)) * (180 / np.pi))
-        hour_angle = np.radians(hour_of_day * 15.0 - 180.0)
-        SZA = np.degrees(np.arccos(np.sin(lat) * np.sin(dec) + np.cos(lat) * np.cos(dec) * np.cos(hour_angle)))
-        SZA = Raster(SZA, geometry=geometry)
+        # day_angle = np.radians((2 * np.pi * (day_of_year - 1)) / 365)
+        # day_angle_rad = (2 * np.pi * (day_of_year - 1)) / 365
+        # lat = np.radians(geometry.lat)
+        # solar_dec_rad = np.radians((0.006918 - 0.399912 * np.cos(day_angle_rad) + 0.070257 * np.sin(day_angle_rad) - 0.006758 * np.cos(
+        #     2 * day_angle_rad) + 0.000907 * np.sin(2 * day_angle_rad) - 0.002697 * np.cos(3 * day_angle_rad) + 0.00148 * np.sin(
+        #     3 * day_angle_rad)) * (180 / np.pi))
+        # hour_angle_rad = np.radians(hour_of_day * 15.0 - 180.0)
+        # SZA = np.degrees(np.arccos(np.sin(lat) * np.sin(solar_dec_rad) + np.cos(lat) * np.cos(solar_dec_rad) * np.cos(hour_angle_rad)))
+
+        latitude = geometry.lat
+        # print("lat: {}".format(np.nanmean(latitude)))
+        day_angle_rad = day_angle_rad_from_doy(day_of_year)
+        # print("day angle: {}".format(np.nanmean(day_angle_rad)))
+        solar_dec_deg = solar_dec_deg_from_day_angle_rad(day_angle_rad)
+        # print("solar declination: {}".format(np.nanmean(solar_dec_deg)))
+        SZA_deg = sza_deg_from_lat_dec_hour(latitude, solar_dec_deg, hour_of_day)
+        # print("SZA: {}".format(np.nanmean(SZA_deg)))
+
+        SZA = Raster(SZA_deg, geometry=geometry)
 
         return SZA
 
@@ -332,133 +345,82 @@ class FLiES(Model):
         hour_of_day = self.hour_of_day(time_UTC=time_UTC, geometry=geometry)
         day_of_year = self.day_of_year(time_UTC=time_UTC, geometry=geometry)
 
-        Ra = self.load_intermediate(variable_name="Ra", date_UTC=date_UTC, target=target)
-        Rg = self.load_intermediate(variable_name="Rg", date_UTC=date_UTC, target=target)
-        UV = self.load_intermediate(variable_name="UV", date_UTC=date_UTC, target=target)
-        VIS = self.load_intermediate(variable_name="VIS", date_UTC=date_UTC, target=target)
-        NIR = self.load_intermediate(variable_name="NIR", date_UTC=date_UTC, target=target)
-        VISdiff = self.load_intermediate(variable_name="VISdiff", date_UTC=date_UTC, target=target)
-        NIRdiff = self.load_intermediate(variable_name="NIRdiff", date_UTC=date_UTC, target=target)
-        VISdir = self.load_intermediate(variable_name="VISdir", date_UTC=date_UTC, target=target)
-        NIRdir = self.load_intermediate(variable_name="NIRdir", date_UTC=date_UTC, target=target)
-
-        if all([item is not None for item in (Ra, Rg, UV, VIS, NIR, VISdiff, NIRdiff, VISdir, NIRdir)]):
-            return Ra, Rg, UV, VIS, NIR, VISdiff, NIRdiff, VISdir, NIRdir
-
         if elevation_km is None:
-            elevation_km = self.load_intermediate(variable_name="elevation_km", date_UTC=date_UTC, target=target)
+            elevation_km = self.elevation_km(geometry)
 
-            if elevation_km is None:
-                elevation_km = self.elevation_km(geometry)
-
-            if self.save_intermediate:
-                self.write_intermediate(image=elevation_km, variable="elevation_km", date_UTC=date_UTC, target=target)
+        self.diagnostic(elevation_km, "elevation_km", date_UTC, target)
 
         if SZA is None:
-            SZA = self.load_intermediate(variable_name="SZA", date_UTC=date_UTC, target=target)
+            SZA = self.SZA(day_of_year=day_of_year, hour_of_day=hour_of_day, geometry=geometry)
 
-            if SZA is None:
-                SZA = self.SZA(day_of_year=day_of_year, hour_of_day=hour_of_day, geometry=geometry)
-
-            if self.save_intermediate:
-                self.write_intermediate(image=SZA, variable="SZA", date_UTC=date_UTC, target=target)
+        self.diagnostic(SZA, "SZA", date_UTC, target)
 
         if AOT is None:
-            AOT = self.load_intermediate(variable_name="AOT", date_UTC=date_UTC, target=target)
+            AOT = self.AOT(time_UTC=time_UTC, geometry=geometry)
 
-            if AOT is None:
-                AOT = self.AOT(time_UTC=time_UTC, geometry=geometry)
-
-            if self.save_intermediate:
-                self.write_intermediate(image=AOT, variable="AOT", date_UTC=date_UTC, target=target)
+        self.diagnostic(AOT, "AOT", date_UTC, target)
 
         if COT is None:
-            COT = self.load_intermediate(variable_name="COT", date_UTC=date_UTC, target=target)
-
-            if COT is None:
-                COT = self.COT(time_UTC=time_UTC, geometry=geometry)
-
-            if self.save_intermediate:
-                self.write_intermediate(image=COT, variable="COT", date_UTC=date_UTC, target=target)
-
-        if vapor_gccm is None:
-            vapor_gccm = self.load_intermediate(variable_name="vapor_gccm", date_UTC=date_UTC, target=target)
-
-            if vapor_gccm is None:
-                vapor_gccm = self.vapor_gccm(time_UTC=time_UTC, geometry=geometry)
-
-            if self.save_intermediate:
-                self.write_intermediate(image=vapor_gccm, variable="vapor_gccm", date_UTC=date_UTC, target=target)
-
-        if ozone_cm is None:
-            ozone_cm = self.load_intermediate(variable_name="ozone_cm", date_UTC=date_UTC, target=target)
-
-            if ozone_cm is None:
-                ozone_cm = self.ozone_cm(time_UTC=time_UTC, geometry=geometry)
-
-            if self.save_intermediate:
-                self.write_intermediate(image=ozone_cm, variable="ozone_cm", date_UTC=date_UTC, target=target)
-
-        if KG_climate is None:
-            KG_climate = self.load_intermediate(variable_name="KG_climate", date_UTC=date_UTC, target=target)
-
-            if KG_climate is None:
-                self.logger.info("generating Koppen Geiger top-level climate classification raster")
-                KG_climate = load_koppen_geiger(geometry)
-
-            if self.save_intermediate:
-                self.write_intermediate(image=KG_climate, variable="KG_climate", date_UTC=date_UTC, target=target)
+            COT = self.COT(time_UTC=time_UTC, geometry=geometry)
 
         COT = np.clip(COT, 0, None)
         COT = rt.where(COT < 0.001, 0, COT)
+        self.diagnostic(COT, "COT", date_UTC, target)
+
+        if vapor_gccm is None:
+            vapor_gccm = self.vapor_gccm(time_UTC=time_UTC, geometry=geometry)
+
+        self.diagnostic(vapor_gccm, "vapor_gccm", date_UTC, target)
+
+        if ozone_cm is None:
+            ozone_cm = self.ozone_cm(time_UTC=time_UTC, geometry=geometry)
+
+        self.diagnostic(ozone_cm, "ozone_cm", date_UTC, target)
+
+        if KG_climate is None:
+            self.logger.info("generating Koppen Geiger top-level climate classification raster")
+            KG_climate = load_koppen_geiger(geometry)
+
+        self.diagnostic(KG_climate, "KG_climate", date_UTC, target)
+
+
         atype, ctype = self.generate_atype_ctype(COT=COT, KG_climate=KG_climate, geometry=geometry, dynamic_atype_ctype=self.dynamic_atype_ctype)
         self.diagnostic(atype, "atype", date_UTC, target)
         self.diagnostic(ctype, "ctype", date_UTC, target)
 
-        tm = self.load_intermediate(variable_name="tm", date_UTC=date_UTC, target=target)
-        puv = self.load_intermediate(variable_name="puv", date_UTC=date_UTC, target=target)
-        pvis = self.load_intermediate(variable_name="pvis", date_UTC=date_UTC, target=target)
-        pnir = self.load_intermediate(variable_name="pnir", date_UTC=date_UTC, target=target)
-        fduv = self.load_intermediate(variable_name="fduv", date_UTC=date_UTC, target=target)
-        fdvis = self.load_intermediate(variable_name="fdvis", date_UTC=date_UTC, target=target)
-        fdnir = self.load_intermediate(variable_name="fdnir", date_UTC=date_UTC, target=target)
+        self.logger.info(
+            "started neural network processing " +
+            f"at tile {cl.place(target)} {cl.val(geometry.shape)} " +
+            "at " + cl.time(f"{time_UTC:%Y-%m-%d} UTC")
+        )
 
-        if any([item is None for item in (tm, puv, pvis, pnir, fduv, fdvis, fdnir)]):
-            self.logger.info(
-                "started neural network processing " +
-                f"at tile {cl.place(target)} {cl.val(geometry.shape)} " +
-                "at " + cl.time(f"{time_UTC:%Y-%m-%d} UTC")
-            )
+        prediction_start_time = process_time()
+        tm, puv, pvis, pnir, fduv, fdvis, fdnir = self.FLiES_ANN(
+            geometry=geometry,
+            atype=atype,
+            ctype=ctype,
+            COT=COT,
+            AOT=AOT,
+            vapor_gccm=vapor_gccm,
+            ozone_cm=ozone_cm,
+            albedo=albedo,
+            elevation_km=elevation_km,
+            SZA=SZA
+        )
 
-            prediction_start_time = process_time()
-            tm, puv, pvis, pnir, fduv, fdvis, fdnir = self.FLiES_ANN(
-                geometry=geometry,
-                atype=atype,
-                ctype=ctype,
-                COT=COT,
-                AOT=AOT,
-                vapor_gccm=vapor_gccm,
-                ozone_cm=ozone_cm,
-                albedo=albedo,
-                elevation_km=elevation_km,
-                SZA=SZA
-            )
+        prediction_end_time = process_time()
+        prediction_duration = prediction_end_time - prediction_start_time
+        self.logger.info(f"finished neural network processing ({prediction_duration:0.2f}s)")
 
-            prediction_end_time = process_time()
-            prediction_duration = prediction_end_time - prediction_start_time
-            self.logger.info(f"finished neural network processing ({prediction_duration:0.2f}s)")
-
-            self.diagnostic(tm, "tm", date_UTC, target)
-            self.diagnostic(puv, "puv", date_UTC, target)
-            self.diagnostic(pvis, "pvis", date_UTC, target)
-            self.diagnostic(pnir, "pnir", date_UTC, target)
-            self.diagnostic(fduv, "fduv", date_UTC, target)
-            self.diagnostic(fdvis, "fdvis", date_UTC, target)
-            self.diagnostic(fdnir, "fdnir", date_UTC, target)
+        self.diagnostic(tm, "tm", date_UTC, target)
+        self.diagnostic(puv, "puv", date_UTC, target)
+        self.diagnostic(pvis, "pvis", date_UTC, target)
+        self.diagnostic(pnir, "pnir", date_UTC, target)
+        self.diagnostic(fduv, "fduv", date_UTC, target)
+        self.diagnostic(fdvis, "fdvis", date_UTC, target)
+        self.diagnostic(fdnir, "fdnir", date_UTC, target)
 
         ##  Correction for diffuse PAR
-
-        # COT[COT == 0.0] = np.nan
         COT = rt.where(COT == 0.0, np.nan, COT)
         COT = rt.where(np.isfinite(COT), COT, np.nan)
         x = np.log(COT)
@@ -470,7 +432,6 @@ class FLiES(Model):
         fdvis = fdvis * corr * 0.915
 
         ## Radiation components
-
         dr = 1.0 + 0.033 * np.cos(2 * np.pi / 365.0 * day_of_year)
         Ra = 1333.6 * dr * np.cos(SZA * np.pi / 180.0)
         Ra = rt.where(SZA > 90.0, 0, Ra)
@@ -574,7 +535,7 @@ class FLiES(Model):
         self.logger.info("retrieving GEOS-5 FP vapor pressure raster in Pascals")
         Ea_Pa = self.GEOS5FP_connection.Ea_Pa(time_UTC=time_UTC, geometry=geometry, resampling=self.resampling)
 
-        if self.downscale_humidity and ST_K is not None:
+        if self.downscale_vapor and ST_K is not None:
             mean = np.nanmean(Ea_Pa)
             sd = np.nanstd(Ea_Pa)
             self.logger.info(f"downscaling vapor pressure with mean {mean} and sd {sd}")
@@ -604,7 +565,7 @@ class FLiES(Model):
             3 * day_angle_rad) + 0.00148 * np.sin(
             3 * day_angle_rad)) * (180 / np.pi)
 
-    def daily_integration(
+    def Rn_daily(
             self,
             Rn: Raster,
             hour_of_day: Raster,

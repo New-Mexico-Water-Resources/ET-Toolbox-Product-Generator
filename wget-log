@@ -1,0 +1,7 @@
+--2022-12-07 13:15:43--  https://portal.nccs.nasa.gov/datashare/gmao/geos-fp/das/Y2022/M07/D02/GEOS.fp.asm.tavg1_2d_slv_Nx.20220702_2030.V01.nc4
+Resolving portal.nccs.nasa.gov (portal.nccs.nasa.gov)... 169.154.151.145
+Connecting to portal.nccs.nasa.gov (portal.nccs.nasa.gov)|169.154.151.145|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 77222247 (74M) [text/plain]
+Saving to: '/Users/halverso/data/ET_toolbox_historical_coarse_testing/GEOS5FP_download_directory/2022.07.02/GEOS.fp.asm.tavg1_2d_slv_Nx.20220702_2030.V01.nc4.20221207211543.download'
+
