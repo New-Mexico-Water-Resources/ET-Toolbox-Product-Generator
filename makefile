@@ -9,10 +9,10 @@ version:
 	$(info ETtoolbox Collection 2 pipeline version ${VERSION})
 
 mamba:
-ifeq ($(word 1,$(shell conda run -n base conda list mamba | grep mamba)),mamba)
+ifeq ($(word 1,$(shell mamba --version)),mamba)
 	@echo "mamba already installed"
 else
-	-conda deactivate; conda install -y -c conda-forge mamba
+	-conda deactivate; conda install -y -c conda-forge "mamba>=0.23"
 endif
 
 create-blank-env:
