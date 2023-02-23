@@ -6,7 +6,6 @@ dependencies:
   - astropy
   - beautifulsoup4
   - cmake
-  - cxx-compiler
   - descartes
   - ephem
   - gdal>3.1
