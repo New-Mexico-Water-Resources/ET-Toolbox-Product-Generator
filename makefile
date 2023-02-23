@@ -15,13 +15,6 @@ else
 	-conda deactivate; conda install -y -c conda-forge mamba
 endif
 
-mamba-docker:
-ifeq ($(word 1,$(shell conda list mamba | grep mamba)),mamba)
-	@echo "mamba already installed"
-else
-	-conda install -y -c conda-forge mamba
-endif
-
 create-blank-env:
 	$(info creating blank ETtoolbox environment)
 	-conda run -n base mamba create -n ETtoolbox
@@ -40,10 +33,6 @@ environment:
 refresh-env:
 	make remove
 	make environment
-
-environment-docker:
-	pip install pybind11_cmake
-	mamba env update -n base --file ETtoolbox_docker.yml
 
 clean:
 	$(info cleaning build)
@@ -107,13 +96,4 @@ reinstall-soft:
 	make install-package
 
 docker-build:
-	docker build -t ETtoolbox .
-
-docker-build-mamba:
-	docker build --target mamba -t ETtoolbox .
-
-docker-build-environment:
-	docker build --target environment -t ETtoolbox .
-
-docker-shell:
-	docker run -it ETtoolbox bash
+	docker build -t ettoolbox .
