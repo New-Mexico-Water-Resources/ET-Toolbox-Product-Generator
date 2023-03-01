@@ -79,7 +79,7 @@ class VNP21A1DGranule(VIIRSGranule):
             cloud_mask = self._cloud_mask
 
         if target_shape is not None:
-            cloud_mask = resize(cloud_mask, target_shape, order=0).astype(np.bool)
+            cloud_mask = resize(cloud_mask, target_shape, order=0).astype(bool)
             shape = target_shape
         else:
             shape = cloud_mask.shape
@@ -474,7 +474,7 @@ class VNP21A1D(VIIRSDataPool):
             cloud_mask = self._cloud_mask
 
         if target_shape is not None:
-            cloud_mask = resize(cloud_mask, target_shape, order=0).astype(np.bool)
+            cloud_mask = resize(cloud_mask, target_shape, order=0).astype(bool)
 
         geometry = generate_MODLAND_grid(h, v, target_shape[0])
         cloud_mask = Raster(cloud_mask, geometry=geometry)
