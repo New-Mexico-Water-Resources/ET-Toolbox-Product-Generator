@@ -944,7 +944,7 @@ class LandsatL2C2Granule(object):
 
         profile = self.rasterio_profile
 
-        if product_data.dtype == np.bool:
+        if str(product_data.dtype) == "bool":
             product_data = product_data.astype("int16")
 
         profile["dtype"] = product_data.dtype
