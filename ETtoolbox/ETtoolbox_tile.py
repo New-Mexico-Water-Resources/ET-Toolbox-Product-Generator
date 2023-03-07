@@ -40,3 +40,6 @@ def main(argv=sys.argv):
         LANCE_download_directory=LANCE_download_directory,
         GEOS5FP_download_directory=GEOS5FP_download,
     )
+
+if __name__ == "__main__":
+    sys.exit(main(argv=sys.argv))
