@@ -64,7 +64,8 @@ RUN mamba install -v -y matplotlib
 RUN mamba install -v -y netcdf4
 RUN mamba install -v -y nose
 RUN mamba install -v -y pip
-RUN mamba install -v -y pygeos 
+RUN mamba install -v -y pygeos
+RUN mamba install -v -y pygrib
 RUN mamba install -v -y pyhdf
 RUN mamba install -v -y pyresample
 RUN mamba install -v -y pysolar
