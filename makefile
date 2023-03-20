@@ -20,9 +20,7 @@ create-blank-env:
 	-conda run -n base mamba create -n ETtoolbox
 
 update-env-mamba:
-	-conda run -n ETtoolbox mamba env update --file ETtoolbox.yml
-#	-conda activate ETtoolbox; mamba env update --file ETtoolbox.yml
-#	-source activate ETtoolbox; mamba env update --file ETtoolbox.yml
+	mamba env update -n ETtoolbox -f ETtoolbox.yml
 
 environment:
 	make mamba
