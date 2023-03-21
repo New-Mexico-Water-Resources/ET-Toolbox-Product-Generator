@@ -20,10 +20,7 @@ create-blank-env:
 	-conda run -n base mamba create -n ETtoolbox
 
 update-env-mamba:
-# 	-conda run -n ETtoolbox mamba env update --file ETtoolbox.yml
 	mamba env update -n ETtoolbox -f ETtoolbox.yml
-#	-conda activate ETtoolbox; mamba env update --file ETtoolbox.yml
-#	-source activate ETtoolbox; mamba env update --file ETtoolbox.yml
 
 environment:
 	make mamba
@@ -46,26 +43,19 @@ clean:
 uninstall:
 	$(info uninstalling ETtoolbox package)
 	-conda run -n ETtoolbox pip uninstall ETtoolbox -y
-#	-conda activate ETtoolbox; pip uninstall ETtoolbox -y
-#	-source activate ETtoolbox; pip uninstall ETtoolbox -y
 
 unit-tests:
 	$(info running unit tests)
 	conda run -n ETtoolbox nosetests -v -w tests
-#	conda activate ETtoolbox; nosetests -v -w tests
-#	source activate ETtoolbox; nosetests -v -w tests
 
 unit-tests-docker:
 	nosetests -v -w tests
 
 setuptools:
 	-conda run -n ETtoolbox python setup.py install
-#	-conda activate ETtoolbox; python setup.py install
-#	-source activate ETtoolbox; python setup.py install
 
 install-package:
 	$(info installing ETtoolbox package)
-#	conda run -n ETtoolbox python setup.py install
 	-make setuptools
 	make clean
 	make unit-tests
