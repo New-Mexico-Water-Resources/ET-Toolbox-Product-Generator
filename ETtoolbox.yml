@@ -28,6 +28,7 @@ dependencies:
   - nose
   - pybind11
   - pygeos
+  - pygrib
   - pyhdf
   - pyresample
   - pysolar
