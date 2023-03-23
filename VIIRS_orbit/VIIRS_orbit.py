@@ -25,7 +25,7 @@ from dateutil import parser
 import logging
 import shapely.ops
 
-from VIIRS_orbit.spacetrack_credentials import get_spacetrack_credentials
+from spacetrack_credentials import get_spacetrack_credentials
 
 
 def get_TLE(datetime_UTC: datetime = None, username: str = None, password: str = None) -> str:

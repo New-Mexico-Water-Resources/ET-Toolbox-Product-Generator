@@ -73,6 +73,8 @@ install:
 
 install-docker:
 	make clean
+	cp ERS_credentials.txt ERS_credentials
+	cp spacetrack_credentials.txt spacetrack_credentials
 	make install-package-docker
 
 remove:
