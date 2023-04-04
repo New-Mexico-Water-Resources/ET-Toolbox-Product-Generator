@@ -49,7 +49,7 @@ def ET_toolbox_hindcast_tile(
         working_directory: str = None,
         static_directory: str = None,
         LANCE_download: str = None,
-        LANCE_output_directory: str = None,
+        output_directory: str = None,
         SRTM_connection: SRTM = None,
         SRTM_download: str = None,
         GEOS5FP_connection: GEOS5FP = None,
@@ -130,7 +130,7 @@ def ET_toolbox_hindcast_tile(
                 soil_grids_connection=soil_grids_connection,
                 soil_grids_download=soil_grids_download,
                 LANCE_download_directory=LANCE_download,
-                LANCE_output_directory=LANCE_output_directory,
+                LANCE_output_directory=output_directory,
                 intermediate_directory=intermediate_directory,
                 preview_quality=preview_quality,
                 ANN_model=ANN_model,
@@ -356,10 +356,16 @@ def main(argv=sys.argv):
     else:
         GEOS5FP_download = join(working_directory, "GEOS5FP_download_directory")
 
+    if "--output" in argv:
+        output_directory = argv[argv.index("--output") + 1]
+    else:
+        output_directory = join(working_directory, "output_directory")
+
     ET_toolbox_hindcast_tile(
         tile=tile,
         working_directory=working_directory,
         static_directory=static_directory,
+        output_directory=output_directory,
         SRTM_download=SRTM_download,
         LANCE_download=LANCE_download_directory,
         GEOS5FP_download=GEOS5FP_download,
