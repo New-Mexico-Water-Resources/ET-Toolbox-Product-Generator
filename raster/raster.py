@@ -14,7 +14,7 @@ import pickle
 import warnings
 from abc import abstractmethod
 from collections import OrderedDict
-from collections.abs import Iterable
+from collections.abc import Iterable
 from os import makedirs
 from os.path import dirname, exists, abspath, expanduser, splitext
 from typing import List, Tuple, Iterator, Union, Any, Optional
