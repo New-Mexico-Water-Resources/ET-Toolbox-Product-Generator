@@ -43,26 +43,19 @@ clean:
 uninstall:
 	$(info uninstalling ETtoolbox package)
 	-conda run -n ETtoolbox pip uninstall ETtoolbox -y
-#	-conda activate ETtoolbox; pip uninstall ETtoolbox -y
-#	-source activate ETtoolbox; pip uninstall ETtoolbox -y
 
 unit-tests:
 	$(info running unit tests)
 	conda run -n ETtoolbox nosetests -v -w tests
-#	conda activate ETtoolbox; nosetests -v -w tests
-#	source activate ETtoolbox; nosetests -v -w tests
 
 unit-tests-docker:
 	nosetests -v -w tests
 
 setuptools:
 	-conda run -n ETtoolbox python setup.py install
-#	-conda activate ETtoolbox; python setup.py install
-#	-source activate ETtoolbox; python setup.py install
 
 install-package:
 	$(info installing ETtoolbox package)
-#	conda run -n ETtoolbox python setup.py install
 	-make setuptools
 	make clean
 	make unit-tests
@@ -80,10 +73,13 @@ install:
 
 install-docker:
 	make clean
+	cp ERS_credentials.txt ERS_credentials
+	cp spacetrack_credentials.txt spacetrack_credentials
 	make install-package-docker
 
 remove:
-	conda run -n base conda env remove -n ETtoolbox
+	# conda run -n base conda env remove -n ETtoolbox
+	mamba env remove -n ETtoolbox
 
 reinstall-hard:
 	make remove
