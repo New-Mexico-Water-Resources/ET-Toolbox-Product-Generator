@@ -165,6 +165,7 @@ def LANCE_GEOS5FP_NRT(
         soil_grids_connection: SoilGrids = None,
         soil_grids_download: str = None,
         intermediate_directory: str = None,
+        spacetrack_credentials_filename: str = None,
         preview_quality: int = DEFAULT_PREVIEW_QUALITY,
         ANN_model: Callable = None,
         ANN_model_filename: str = None,
@@ -275,8 +276,16 @@ def LANCE_GEOS5FP_NRT(
     if ST_C is None:
         logger.info(
             f"retrieving {cl.name('VNP21_NRT')} {cl.name('ST_C')} from LANCE on {cl.time(LANCE_processing_date)}")
-        ST_C = retrieve_VNP21NRT_ST(geometry=geometry, date_solar=LANCE_processing_date,
-                                    directory=LANCE_download_directory, resampling="cubic") - 273.15
+
+        ST_K = retrieve_VNP21NRT_ST(
+            geometry=geometry,
+            date_solar=LANCE_processing_date,
+            directory=LANCE_download_directory,
+            resampling="cubic",
+            spacetrack_credentials_filename=spacetrack_credentials_filename
+        )
+
+        ST_C = ST_C - 273.15
         ST_C_smooth = GEOS5FP_connection.Ts_K(time_UTC=time_UTC, geometry=geometry, resampling="cubic") - 273.15
         ST_C = rt.where(np.isnan(ST_C), ST_C_smooth, ST_C)
 

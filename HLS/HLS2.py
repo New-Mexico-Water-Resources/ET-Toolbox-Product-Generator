@@ -503,6 +503,7 @@ class HLS2CMRSTAC(HLS2):
             target_resolution: int = None,
             username: str = None,
             password: str = None,
+            ERS_credentials_filename: str = None,
             remote: str = None,
             retries: int = DEFAULT_RETRIES,
             wait_seconds: float = DEFAULT_WAIT_SECONDS):
@@ -513,7 +514,7 @@ class HLS2CMRSTAC(HLS2):
             remote = self.URL
 
         if username is None or password is None:
-            credentials = get_ERS_credentials()
+            credentials = get_ERS_credentials(filename=ERS_credentials_filename)
             username = credentials["username"]
             password = credentials["password"]
 
@@ -1063,6 +1064,7 @@ class HLS2CMR(HLS2):
             target_resolution: int = None,
             username: str = None,
             password: str = None,
+            ERS_credentials_filename: str = None,
             remote: str = None,
             retries: int = DEFAULT_RETRIES,
             wait_seconds: float = DEFAULT_WAIT_SECONDS):
@@ -1091,7 +1093,7 @@ class HLS2CMR(HLS2):
         logger.info(f"HLS 2.0 products directory: {cl.dir(products_directory)}")
 
         if username is None or password is None:
-            credentials = get_ERS_credentials()
+            credentials = get_ERS_credentials(filename=ERS_credentials_filename)
             username = credentials["username"]
             password = credentials["password"]
 

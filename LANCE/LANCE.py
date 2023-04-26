@@ -306,7 +306,8 @@ def retrieve_VNP21NRT(
         date_solar: date = None,
         variable: str = None,
         resampling: str = None,
-        directory: str = None) -> rt.Raster:
+        directory: str = None,
+        spacetrack_credentials_filename: str = None) -> rt.Raster:
     if variable is None:
         variable = "LST"
 
@@ -318,7 +319,7 @@ def retrieve_VNP21NRT(
 
     datetime_solar = datetime(date_solar.year, date_solar.month, date_solar.day, 13, 30)
     datetime_UTC = solar_to_UTC(datetime_solar, geometry.centroid.latlon.x)
-    swaths = find_VIIRS_swaths(date_solar, geometry.corner_polygon_latlon, filter_geometry=True)
+    swaths = find_VIIRS_swaths(date_solar, geometry.corner_polygon_latlon, filter_geometry=True, spacetrack_credentials_filename=spacetrack_credentials_filename)
     composite_image = rt.Raster(np.full(geometry.shape, np.nan), geometry=geometry)
 
     for i, (swath_datetime_UTC, swath_datetime_solar, swath_name, swath_geometry) in swaths.iterrows():
@@ -334,12 +335,14 @@ def retrieve_VNP21NRT_ST(
         geometry: rt.RasterGeometry,
         date_solar: date = None,
         resampling: str = None,
-        directory: str = None) -> rt.Raster:
+        directory: str = None,
+        spacetrack_credentials_filename: str = None) -> rt.Raster:
     return retrieve_VNP21NRT(
         geometry=geometry,
         date_solar=date_solar,
         variable="LST",
-        directory=directory
+        directory=directory,
+        spacetrack_credentials_filename=spacetrack_credentials_filename
     )
 
 
@@ -347,12 +350,14 @@ def retrieve_VNP21NRT_emissivity(
         geometry: rt.RasterGeometry,
         date_solar: date = None,
         resampling: str = None,
-        directory: str = None) -> rt.Raster:
+        directory: str = None,
+        spacetrack_credentials_filename: str = None) -> rt.Raster:
     return retrieve_VNP21NRT(
         geometry=geometry,
         date_solar=date_solar,
         variable="Emis_ASTER",
-        directory=directory
+        directory=directory,
+        spacetrack_credentials_filename=spacetrack_credentials_filename
     )
 
 

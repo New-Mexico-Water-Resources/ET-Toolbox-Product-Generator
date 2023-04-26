@@ -3,7 +3,7 @@ from datetime import datetime
 from os.path import join
 from time import sleep
 
-from ETtoolbox.ETtoolbox_coarse import ET_toolbox_hindcast_tile
+from ETtoolbox.ETtoolbox_hindcast_coarse import ET_toolbox_hindcast_coarse_tile
 import logging
 import cl
 
@@ -45,7 +45,7 @@ def new_mexico_VIIRS_server(
         logger.info(f"running New Nexico VIIRS data production at time {runtime} UTC")
 
         for tile in tiles:
-            ET_toolbox_hindcast_tile(
+            ET_toolbox_hindcast_coarse_tile(
                 tile=tile,
                 working_directory=working_directory,
                 static_directory=static_directory,
