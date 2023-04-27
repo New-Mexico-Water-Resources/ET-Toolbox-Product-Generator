@@ -1,6 +1,6 @@
 FROM condaforge/mambaforge
 
-ENV APP_ROOT /app
+ENV APP_ROOT /ET-Toolbox-Product-Generator
 
 # update Ubuntu package manager
 RUN apt-get update
@@ -19,8 +19,7 @@ RUN mamba install -y "gdal>3.1" "rasterio>1.0.0" "setuptools!=58" "shapely<2.0.0
 RUN pip install astropy beautifulsoup4 cmake descartes ephem geopandas h5py imageio imageio-ffmpeg jupyter keras matplotlib mgrs netcdf4 nose pip pycksum pygeos pyhdf pyresample pysolar pystac-client requests scikit-image sentinelsat spacetrack termcolor untangle urllib3 xmltodict
 
 # install app
-RUN mkdir ${APP_ROOT}
-WORKDIR ${APP_ROOT}
-ADD . ${APP_ROOT}
-
+RUN mkdir /ET-Toolbox-Product-Generator
+ADD . /ET-Toolbox-Product-Generator
+WORKDIR /ET-Toolbox-Product-Generator
 RUN python setup.py install

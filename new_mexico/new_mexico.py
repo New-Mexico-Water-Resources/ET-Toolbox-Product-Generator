@@ -1,13 +1,13 @@
+import logging
 import sys
 from datetime import datetime
 from os.path import join
 from time import sleep
 
 from ETtoolbox.ETtoolbox_hindcast_coarse import ET_toolbox_hindcast_coarse_tile
-import logging
-import cl
 
 logger = logging.getLogger(__name__)
+
 
 def new_mexico_VIIRS_server(
         working_directory: str = None,
@@ -38,9 +38,62 @@ def new_mexico_VIIRS_server(
     logger.info(f"SRTM directory: {SRTM_download}")
     logger.info(f"GEOS-5 FP directory: {GEOS5FP_download}")
 
-    tiles = ["h08v05", "h09v05"]
+    # tiles = ["h08v05", "h09v05"]
+    tiles = [
+        '12RXV',
+        '12RYV',
+        '12SXA',
+        '12SXB',
+        '12SXC',
+        '12SXD',
+        '12SXE',
+        '12SXF',
+        '12SXG',
+        '12SYA',
+        '12SYB',
+        '12SYC',
+        '12SYD',
+        '12SYE',
+        '12SYF',
+        '12SYG',
+        '13SBA',
+        '13SBB',
+        '13SBR',
+        '13SBS',
+        '13SBT',
+        '13SBU',
+        '13SBV',
+        '13SCA',
+        '13SCB',
+        '13SCR',
+        '13SCS',
+        '13SCT',
+        '13SCU',
+        '13SCV',
+        '13SDA',
+        '13SDB',
+        '13SDR',
+        '13SDS',
+        '13SDT',
+        '13SDU',
+        '13SDV',
+        '13SEA',
+        '13SEB',
+        '13SER',
+        '13SES',
+        '13SET',
+        '13SEU',
+        '13SEV',
+        '13SFA',
+        '13SFB',
+        '13SFR',
+        '13SFS',
+        '13SFT',
+        '13SFU',
+        '13SFV'
+    ]
 
-    while(True):
+    while (True):
         runtime = datetime.utcnow()
         logger.info(f"running New Nexico VIIRS data production at time {runtime} UTC")
 
@@ -54,7 +107,7 @@ def new_mexico_VIIRS_server(
                 GEOS5FP_download=GEOS5FP_download,
             )
 
-        while(datetime.utcnow().hour % 3 != 0):
+        while (datetime.utcnow().hour % 3 != 0):
             sleep(60)
 
 
@@ -75,16 +128,22 @@ def main(argv=sys.argv):
         SRTM_download = join(working_directory, "SRTM_download_directory")
 
     if "--LANCE" in argv:
-        LANCE_download_directory = argv[argv.index("--LANCE") + 1]
+        LANCE_download = argv[argv.index("--LANCE") + 1]
     else:
-        LANCE_download_directory = join(working_directory, "LANCE_download_directory")
+        LANCE_download = join(working_directory, "LANCE_download_directory")
 
     if "--GEOS5FP" in argv:
         GEOS5FP_download = argv[argv.index("--GEOS5FP") + 1]
     else:
         GEOS5FP_download = join(working_directory, "GEOS5FP_download_directory")
 
-    return new_mexico_VIIRS_server()
+    return new_mexico_VIIRS_server(
+        working_directory=working_directory,
+        static_directory=static_directory,
+        SRTM_download=SRTM_download,
+        LANCE_download=LANCE_download,
+        GEOS5FP_download=GEOS5FP_download
+    )
 
 
 if __name__ == "__main__":
