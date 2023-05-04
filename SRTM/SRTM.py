@@ -99,8 +99,15 @@ class SRTM(LPDAACDataPool):
             remote: str = None,
             working_directory: str = None,
             download_directory: str = None,
+            ERS_credentials_filename: str = None,
             offline_ok: bool = False):
-        super(SRTM, self).__init__(username=username, password=password, remote=remote, offline_ok=offline_ok)
+        super(SRTM, self).__init__(
+            username=username,
+            password=password,
+            remote=remote,
+            ERS_credentials_filename=ERS_credentials_filename,
+            offline_ok=offline_ok
+        )
 
         if working_directory is None:
             working_directory = DEFAULT_WORKING_DIRECTORY

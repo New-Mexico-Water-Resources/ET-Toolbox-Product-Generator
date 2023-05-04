@@ -66,6 +66,7 @@ def ET_toolbox_hindcast_coarse_tile(
         ANN_model: Callable = None,
         ANN_model_filename: str = None,
         spacetrack_credentials_filename: str = None,
+        ERS_credentials_filename: str = None,
         resampling: str = DEFAULT_RESAMPLING,
         meso_cell_size: float = DEFAULT_MESO_CELL_SIZE,
         coarse_cell_size: float = DEFAULT_COARSE_CELL_SIZE,
@@ -95,18 +96,24 @@ def ET_toolbox_hindcast_coarse_tile(
             products_directory=GEOS5FP_products
         )
 
+    bundled_spacetrack_credentials_filename = join(abspath(dirname(__file__)), "spacetrack_credentials.txt")
+
+    if spacetrack_credentials_filename is None and exists(bundled_spacetrack_credentials_filename):
+        spacetrack_credentials_filename = bundled_spacetrack_credentials_filename
+
+    bundled_ERS_credentials_filename = join(abspath(dirname(__file__)), "ERS_credentials.txt")
+
+    if ERS_credentials_filename is None and exists(bundled_ERS_credentials_filename):
+        ERS_credentials_filename = bundled_ERS_credentials_filename
+
     if SRTM_connection is None:
         # FIXME fix handling of credentials here
         SRTM_connection = SRTM(
             working_directory=working_directory,
             download_directory=SRTM_download,
+            ERS_credentials_filename=ERS_credentials_filename,
             offline_ok=True
         )
-
-    bundled_spacetrack_credentials_filename = join(abspath(dirname(__file__)), "spacetrack")
-
-    if spacetrack_credentials_filename is None and exists(bundled_spacetrack_credentials_filename):
-        spacetrack_credentials_filename = bundled_spacetrack_credentials_filename
 
     missing_dates = []
 
@@ -207,6 +214,11 @@ def main(argv=sys.argv):
     else:
         spacetrack_credentials_filename = None
 
+    if "--ERS" in argv:
+        ERS_credentials_filename = argv[argv.index("--ERS") + 1]
+    else:
+        ERS_credentials_filename = None
+
     ET_toolbox_hindcast_coarse_tile(
         tile=tile,
         working_directory=working_directory,
@@ -215,5 +227,6 @@ def main(argv=sys.argv):
         SRTM_download=SRTM_download,
         LANCE_download=LANCE_download_directory,
         GEOS5FP_download=GEOS5FP_download,
-        spacetrack_credentials_filename=spacetrack_credentials_filename
+        spacetrack_credentials_filename=spacetrack_credentials_filename,
+        ERS_credentials_filename=ERS_credentials_filename
     )

@@ -51,12 +51,18 @@ class LPDAACDataPool:
     DATE_REGEX = re.compile('^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])$')
     DEFAULT_REMOTE = DEFAULT_REMOTE
 
-    def __init__(self, username: str = None, password: str = None, remote: str = None, offline_ok: bool = False):
+    def __init__(
+            self,
+            username: str = None,
+            password: str = None,
+            remote: str = None,
+            ERS_credentials_filename: str = None,
+            offline_ok: bool = False):
         if remote is None:
             remote = DEFAULT_REMOTE
 
         if username is None or password is None:
-            credentials = get_ERS_credentials()
+            credentials = get_ERS_credentials(filename=ERS_credentials_filename)
             username = credentials["username"]
             password = credentials["password"]
 
