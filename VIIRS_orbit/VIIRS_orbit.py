@@ -28,7 +28,7 @@ import shapely.ops
 from spacetrack_credentials import get_spacetrack_credentials
 
 
-def get_TLE(datetime_UTC: datetime = None, username: str = None, password: str = None) -> str:
+def get_TLE(datetime_UTC: datetime = None, username: str = None, password: str = None, spacetrack_credentials_filename: str = None) -> str:
     if datetime_UTC is None:
         datetime_UTC = datetime.utcnow
     
@@ -36,7 +36,7 @@ def get_TLE(datetime_UTC: datetime = None, username: str = None, password: str =
         datetime_UTC = parser.parse(datetime_UTC)
 
     if username is None or password is None:
-        credentials = get_spacetrack_credentials()
+        credentials = get_spacetrack_credentials(filename=spacetrack_credentials_filename)
         username = credentials["username"]
         password = credentials["password"]
 
@@ -84,7 +84,7 @@ def get_TLE(datetime_UTC: datetime = None, username: str = None, password: str =
     
     return record
 
-def get_satellite_position(datetime_UTC: date = None, TLE: str = None) -> Point:
+def get_satellite_position(datetime_UTC: date = None, TLE: str = None, spacetrack_credentials_filename: str = None) -> Point:
     if datetime_UTC is None:
         datetime_UTC = datetime.utcnow()
     
@@ -92,7 +92,7 @@ def get_satellite_position(datetime_UTC: date = None, TLE: str = None) -> Point:
         datetime_UTC = parser.parse(datetime_UTC)
 
     if TLE is None:
-        TLE_datetime_UTC, TLE = get_TLE(datetime_UTC - timedelta(hours=3))
+        TLE_datetime_UTC, TLE = get_TLE(datetime_UTC - timedelta(hours=3), spacetrack_credentials_filename=spacetrack_credentials_filename)
     
     ephemeris = ephem.readtle(*TLE.split("\n"))
     ephemeris.compute(datetime_UTC)
@@ -210,7 +210,8 @@ def get_swaths(
         start_datetime_UTC: datetime = None,
         end_datetime_UTC: datetime = None, 
         target: Polygon = None, 
-        TLE: str = None, 
+        TLE: str = None,
+        spacetrack_credentials_filename: str = None,
         swath_duration_minutes: int = 6,
         day_only: bool = True,
         filter_geometry: bool = True,
@@ -246,7 +247,7 @@ def get_swaths(
         times.append(datetime_UTC)
         
         if datetime_UTC not in satellite_positions:
-            back_point = get_satellite_position(datetime_UTC, TLE=TLE)
+            back_point = get_satellite_position(datetime_UTC, TLE=TLE, spacetrack_credentials_filename=spacetrack_credentials_filename)
             satellite_positions[datetime_UTC] = back_point
         else:
             back_point = satellite_positions[datetime_UTC]
@@ -256,7 +257,7 @@ def get_swaths(
         front_datetime_UTC = datetime_UTC + timedelta(minutes=swath_duration_minutes)
 
         if front_datetime_UTC not in satellite_positions:
-            front_point = get_satellite_position(front_datetime_UTC, TLE=TLE)
+            front_point = get_satellite_position(front_datetime_UTC, TLE=TLE, spacetrack_credentials_filename=spacetrack_credentials_filename)
             satellite_positions[front_datetime_UTC] = front_point
         else:
             front_point = satellite_positions[front_datetime_UTC]
@@ -315,14 +316,13 @@ def get_swaths(
 
     return gdf
 
-def find_VIIRS_swaths(date_solar: date, geometry: Polygon = None, filter_geometry: bool = True):
-    
+def find_VIIRS_swaths(date_solar: date, geometry: Polygon = None, filter_geometry: bool = True, spacetrack_credentials_filename: str = None):
     radius_minutes = 60 * 2
     datetime_solar = datetime(date_solar.year, date_solar.month, date_solar.day, 13, 30)
     datetime_UTC = solar_to_UTC(datetime_solar, geometry.centroid.x)
     datetime_UTC = datetime(datetime_UTC.year, datetime_UTC.month, datetime_UTC.day, datetime_UTC.hour, int(datetime_UTC.minute / 6) * 6)
     start_datetime_UTC = datetime_UTC - timedelta(minutes=radius_minutes)
     end_datetime_UTC = datetime_UTC + timedelta(minutes=radius_minutes)
-    swaths = get_swaths(start_datetime_UTC, end_datetime_UTC, target=geometry, filter_geometry=filter_geometry)
+    swaths = get_swaths(start_datetime_UTC, end_datetime_UTC, target=geometry, filter_geometry=filter_geometry, spacetrack_credentials_filename=spacetrack_credentials_filename)
 
     return swaths

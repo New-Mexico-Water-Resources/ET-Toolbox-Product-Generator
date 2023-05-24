@@ -1,7 +1,7 @@
 import sys
 
 from ERS_credentials import get_ERS_credentials
-from VIIRS_orbit.spacetrack_credentials import get_spacetrack_credentials
+from spacetrack_credentials import get_spacetrack_credentials
 
 def main(argv=sys.argv):
     print("checking EROS Registration System credentials")
