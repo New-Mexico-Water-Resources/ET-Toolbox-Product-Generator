@@ -24,35 +24,35 @@ ANSI_ESCAPE = re.compile(r'\x1b[^m]*m')
 
 
 def strip(text: str) -> str:
-    return ANSI_ESCAPE.sub('', text)
+    return str(ANSI_ESCAPE.sub('', str(text)))
 
 
 def URL(text: Union[str, Any]) -> str:
-    return colored(text, FILE)
+    return str(colored(str(text), FILE))
 
 
 def file(text: Union[str, Any]) -> str:
-    return colored(text, FILE)
+    return str(colored(str(text), FILE))
 
 
 def dir(text: Union[str, Any]) -> str:
-    return colored(text, DIR)
+    return str(colored(str(text), DIR))
 
 
 def time(text: Union[str, Any]) -> str:
-    return colored(text, TIME)
+    return str(colored(str(text), TIME))
 
 
 def place(text: Union[str, Any]) -> str:
-    return colored(text, PLACE)
+    return str(colored(str(text), PLACE))
 
 
 def val(text: Union[str, Any]) -> str:
-    return colored(text, VALUE)
+    return str(colored(str(text), VALUE))
 
 
 def name(text: Union[str, Any]) -> str:
-    return colored(text, NAME)
+    return str(colored(str(text), NAME))
 
 
 class Formatter(logging.Formatter):
