@@ -345,7 +345,6 @@ def retrieve_VNP21NRT_ST(
         spacetrack_credentials_filename=spacetrack_credentials_filename
     )
 
-
 def retrieve_VNP21NRT_emissivity(
         geometry: rt.RasterGeometry,
         date_solar: date = None,

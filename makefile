@@ -32,6 +32,11 @@ refresh-env:
 	make remove
 	make environment
 
+clean-python:
+	$(info cleaning python)
+	find . -type f -name '*.pyc' -delete
+	find . -type d -name '__pycache__' -delete
+
 clean:
 	$(info cleaning build)
 	-rm -rvf build

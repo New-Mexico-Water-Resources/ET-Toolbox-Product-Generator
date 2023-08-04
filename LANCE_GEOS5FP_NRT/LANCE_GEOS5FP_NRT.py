@@ -285,7 +285,7 @@ def LANCE_GEOS5FP_NRT(
             spacetrack_credentials_filename=spacetrack_credentials_filename
         )
 
-        ST_C = ST_C - 273.15
+        ST_C = ST_K - 273.15
         ST_C_smooth = GEOS5FP_connection.Ts_K(time_UTC=time_UTC, geometry=geometry, resampling="cubic") - 273.15
         ST_C = rt.where(np.isnan(ST_C), ST_C_smooth, ST_C)
 
