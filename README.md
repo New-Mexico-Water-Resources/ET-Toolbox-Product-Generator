@@ -14,6 +14,25 @@ This software may be subject to U.S. export control laws. By accepting this soft
 
 This system was designed to work in a Linux-like environment and macOS using a conda environment.
 
+### Amazon Linux 2 AMI
+
+```bash
+
+sudo yum update
+
+sudo yum install git docker
+
+sudo systemctl start docker
+
+sudo systemctl enable docker
+
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh
+
+bash Mambaforge-Linux-x86_64.sh
+
+mamba init bash 
+``` 
+
 ### `conda`
 
 The ECOSTRESS Collection 2 PGEs are designed to run in a Python 3 [`conda`](https://docs.conda.io/en/latest/miniconda.html) environment using [Miniconda](https://docs.conda.io/en/latest/miniconda.html) To use this environment, download and install [Miniconda](https://docs.conda.io/en/latest/miniconda.html). Make sure that your shell has been initialized for `conda`.
