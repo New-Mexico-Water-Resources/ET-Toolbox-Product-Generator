@@ -122,9 +122,9 @@ def load_GFS(GFS_output_directory: str, target_date: Union[date, str], target: s
     return dataset
 
 
-def available_LANCE_dates(product: str, remote=DEFAULT_REMOTE) -> List[date]:
+def available_LANCE_dates(product: str, archive: str, remote=DEFAULT_REMOTE) -> List[date]:
     year = datetime.utcnow().year
-    URL = posixpath.join(remote, product, f"{year:04d}")
+    URL = posixpath.join(str(remote), str(archive), str(product), f"{year:04d}")
     listing = HTTP_listing(URL)
     dates = sorted([datetime.strptime(f"{year:04d}{posixpath.basename(item)}", "%Y%j").date() for item in listing])
 
@@ -259,7 +259,7 @@ def LANCE_GFS_forecast(
         LANCE_download_directory = join(working_directory, DEFAULT_LANCE_DOWNLOAD_DIRECTORY)
 
     logger.info(f"LANCE download directory: {cl.dir(LANCE_download_directory)}")
-    LANCE_dates = available_LANCE_dates("VNP43MA4N")
+    LANCE_dates = available_LANCE_dates("VNP43MA4N", archive="5000")
     earliest_LANCE_date = LANCE_dates[0]
     latest_LANCE_date = LANCE_dates[-1]
     logger.info(f"LANCE is available from {cl.time(earliest_LANCE_date)} to {cl.time(latest_LANCE_date)}")

@@ -240,7 +240,7 @@ def LANCE_GEOS5FP_NRT(
         else:
             return
 
-    LANCE_dates = available_LANCE_dates("VNP43MA4N")
+    LANCE_dates = available_LANCE_dates("VNP43MA4N", archive="5000")
     earliest_LANCE_date = LANCE_dates[0]
     latest_LANCE_date = LANCE_dates[-1]
     logger.info(f"LANCE is available from {cl.time(earliest_LANCE_date)} to {cl.time(latest_LANCE_date)}")

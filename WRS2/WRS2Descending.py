@@ -7,7 +7,7 @@ from shapely.geometry import Polygon, Point
 from shapely.geometry.base import BaseGeometry
 import shapely.wkt
 from transform.UTM import UTM_proj4_from_latlon
-
+import raster as rt
 
 def pathdotrow(tile: str) -> str:
     tile = str(tile)
@@ -54,11 +54,14 @@ class WRS2Descending:
         if isinstance(geometry, str):
             geometry = shapely.wkt.loads(geometry)
 
-        if isinstance(geometry, BaseGeometry):
+        if isinstance(geometry, (shapely.geometry.point.Point, shapely.geometry.polygon.Polygon)):
             geometry = gpd.GeoDataFrame(geometry=[geometry], crs="EPSG:4326")
+        
+        if isinstance(geometry, (rt.Point, rt.Polygon)):
+            geometry = gpd.GeoDataFrame(geometry=[geometry.geometry], crs=geometry.crs.to_wkt())
 
         if not isinstance(geometry, gpd.GeoDataFrame):
-            raise ValueError("invalid target geometry")
+            raise ValueError(f"invalid target geometry {type(geometry)}")
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")

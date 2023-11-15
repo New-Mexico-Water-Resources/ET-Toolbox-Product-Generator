@@ -221,6 +221,8 @@ def ET_toolbox_hindcast_forecast_tile(
         logger.info(f"HLS cell size: {cl.val(HLS_cell_size)}m")
         HLS_geometry = sentinel_tile_grid.grid(tile, cell_size=HLS_cell_size)
 
+    HLS_polygon_latlon = HLS_geometry.boundary_latlon.geometry
+
     if I_geometry is None:
         logger.info(f"I-band cell size: {cl.val(I_cell_size)}m")
         I_geometry = sentinel_tile_grid.grid(tile, cell_size=I_cell_size)
@@ -269,7 +271,7 @@ def ET_toolbox_hindcast_forecast_tile(
         LANCE_output_directory = join(working_directory, DEFAULT_LANCE_OUTPUT_DIRECTORY)
 
     logger.info("listing available LANCE dates")
-    LANCE_dates = available_LANCE_dates("VNP43MA4N")
+    LANCE_dates = available_LANCE_dates("VNP43MA4N", archive="5000")
     earliest_LANCE_date = LANCE_dates[0]
     latest_LANCE_date = LANCE_dates[-1]
     logger.info(f"LANCE is available from {cl.time(earliest_LANCE_date)} to {cl.time(latest_LANCE_date)}")
@@ -348,7 +350,7 @@ def ET_toolbox_hindcast_forecast_tile(
 
     landsat_start = earliest_LANCE_date - timedelta(days=landsat_initialization_days)
     landsat_end = earliest_LANCE_date - timedelta(days=1)
-    landsat_listing = landsat.scene_search(start=landsat_start, end=landsat_end, target_geometry=HLS_geometry)
+    landsat_listing = landsat.scene_search(start=landsat_start, end=landsat_end, target_geometry=HLS_polygon_latlon)
     ST_C_images = []
 
     for date_UTC in sorted(set(landsat_listing.date_UTC)):
@@ -544,25 +546,6 @@ def ET_toolbox_hindcast_forecast_tile(
             ST_C = rt.where(np.isnan(ST_C), ST_C_smooth, ST_C)
             ST_K = ST_C + 273.15
             check_distribution(ST_C, "ST_C", target_date, tile)
-            # most_recent["ST_C"] = ST_C
-
-            # logger.info(
-            #     f"down-scaling GEOS-5 FP soil moisture to HLS composite for tile {cl.place(tile)} on date {cl.time(target_date)} from {cl.val(GEOS5FP_cell_size)}m to {cl.val(HLS_cell_size)}m resolution")
-            #
-            # SM_coarse_GEOS5FP = GEOS5FP_connection.SFMC(time_UTC=time_UTC, geometry=GEOS5FP_geometry,
-            #                                             resampling="cubic")
-            # SM_smooth_GEOS5FP = GEOS5FP_connection.SFMC(time_UTC=time_UTC, geometry=HLS_geometry,
-            #                                             resampling="cubic")
-            # SM = downscale_soil_moisture(
-            #     time_UTC=time_UTC,
-            #     fine_geometry=HLS_geometry,
-            #     coarse_geometry=GEOS5FP_geometry,
-            #     SM_coarse=SM_coarse_GEOS5FP,
-            #     SM_resampled=SM_smooth_GEOS5FP,
-            #     ST_fine=ST_K,
-            #     NDVI_fine=NDVI,
-            #     water=water_HLS
-            # )
 
             SM = None
 
@@ -590,22 +573,7 @@ def ET_toolbox_hindcast_forecast_tile(
                 SM = GEOS5FP_connection.SFMC(time_UTC=time_UTC, geometry=HLS_geometry, resampling="cubic")
 
             check_distribution(SM, "SM", target_date, tile)
-            # most_recent["SM"] = SM
-
-            # logger.info(
-            #     f"down-scaling GEOS-5 FP air temperature to HLS composite for tile {cl.place(tile)} on date {cl.time(target_date)} from {cl.val(GEOS5FP_cell_size)}m to {cl.val(HLS_cell_size)}m resolution")
-            # Ta_K_coarse = GEOS5FP_connection.Ta_K(time_UTC=time_UTC, geometry=GEOS5FP_geometry, resampling="cubic")
-            # Ta_K_smooth = GEOS5FP_connection.Ta_K(time_UTC=time_UTC, geometry=HLS_geometry, resampling="cubic")
-            # Ta_K = downscale_air_temperature(
-            #     time_UTC=time_UTC,
-            #     Ta_K_coarse=Ta_K_coarse,
-            #     ST_K=ST_K,
-            #     fine_geometry=HLS_geometry,
-            #     coarse_geometry=GEOS5FP_geometry
-            # )
-            #
-            # Ta_K = rt.where(np.isnan(Ta_K), Ta_K_smooth, Ta_K)
-
+  
             Ta_K = None
 
             if downscale_air:
@@ -629,43 +597,6 @@ def ET_toolbox_hindcast_forecast_tile(
 
             Ta_C = Ta_K - 273.15
             check_distribution(Ta_C, "Ta_C", target_date, tile)
-
-            # most_recent["Ta_C"] = Ta_C
-
-            # logger.info(
-            #     f"down-scaling GEOS-5 FP humidity to HLS composite for tile {cl.place(tile)} on date {cl.time(target_date)} from {cl.val(GEOS5FP_cell_size)}m to {cl.val(HLS_cell_size)}m resolution")
-            #
-            # VPD_Pa_coarse = GEOS5FP_connection.VPD_Pa(time_UTC=time_UTC, geometry=GEOS5FP_geometry,
-            #                                           resampling="cubic")
-            # VPD_Pa_smooth = GEOS5FP_connection.VPD_Pa(time_UTC=time_UTC, geometry=HLS_geometry, resampling="cubic")
-            #
-            # VPD_Pa = downscale_vapor_pressure_deficit(
-            #     time_UTC=time_UTC,
-            #     VPD_Pa_coarse=VPD_Pa_coarse,
-            #     ST_K=ST_K,
-            #     fine_geometry=HLS_geometry,
-            #     coarse_geometry=GEOS5FP_geometry
-            # )
-            #
-            # VPD_Pa = rt.where(np.isnan(VPD_Pa), VPD_Pa_smooth, VPD_Pa)
-            #
-            # VPD_kPa = VPD_Pa / 1000
-            #
-            # RH_coarse = GEOS5FP_connection.RH(time_UTC=time_UTC, geometry=GEOS5FP_geometry, resampling="cubic")
-            # RH_smooth = GEOS5FP_connection.RH(time_UTC=time_UTC, geometry=HLS_geometry, resampling="cubic")
-            #
-            # RH = downscale_relative_humidity(
-            #     time_UTC=time_UTC,
-            #     RH_coarse=RH_coarse,
-            #     SM=SM,
-            #     ST_K=ST_K,
-            #     VPD_kPa=VPD_kPa,
-            #     water=water_HLS,
-            #     fine_geometry=HLS_geometry,
-            #     coarse_geometry=GEOS5FP_geometry
-            # )
-            #
-            # RH = rt.where(np.isnan(RH), RH_smooth, RH)
 
             RH = None
 

@@ -1,4 +1,5 @@
 from fnmatch import fnmatch
+import os
 from os import makedirs, system
 from typing import List
 from matplotlib.colors import LinearSegmentedColormap
@@ -218,16 +219,35 @@ def GFS_interpolate(
         directory: str = None,
         listing: pd.DataFrame = None) -> rt.Raster:
     before_after = GFS_before_after_addresses(time_UTC, listing=listing)
+    
     before_address = before_after.iloc[0].address
     logger.info(f"before URL: {cl.URL(before_address)}")
     before_time = parser.parse(str(before_after.iloc[0].forecast_time_UTC))
     before_filename = GFS_download(URL=before_address, directory=directory)
+    
+    try:
+        before_image = read_GFS(filename=before_filename, message=message, geometry=geometry, resampling=resampling)
+    except Exception as e:
+        logger.warning(e)
+        os.remove(before_filename)
+
+    before_filename = GFS_download(URL=before_address, directory=directory)
     before_image = read_GFS(filename=before_filename, message=message, geometry=geometry, resampling=resampling)
+
     after_address = before_after.iloc[-1].address
     logger.info(f"after URL: {cl.URL(after_address)}")
+    after_time = parser.parse(str(before_after.iloc[-1].forecast_time_UTC))
+    after_filename = GFS_download(URL=after_address, directory=directory)
+    
+    try:
+        after_image = read_GFS(filename=after_filename, message=message, geometry=geometry, resampling=resampling)
+    except Exception as e:
+        logger.warning(e)
+        os.remove(after_filename)
+
     after_filename = GFS_download(URL=after_address, directory=directory)
     after_image = read_GFS(filename=after_filename, message=message, geometry=geometry, resampling=resampling)
-    after_time = parser.parse(str(before_after.iloc[-1].forecast_time_UTC))
+    
     source_diff = after_image - before_image
     time_fraction = (parser.parse(str(time_UTC)) - parser.parse(str(before_time))) / (parser.parse(str(after_time)) - parser.parse(str(before_time)))
     interpolated_image = before_image + source_diff * time_fraction

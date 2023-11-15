@@ -10,7 +10,7 @@ from os.path import splitext, join, abspath, dirname, basename, expanduser, isdi
 from pathlib import Path
 from shutil import rmtree
 from typing import List, Union
-
+import shapely
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -1254,7 +1254,18 @@ class LandsatL2C2(EEAPI):
         if target_geometry is None and tiles is None:
             raise ValueError("no geometry or path/row given for scene search")
 
-        if isinstance(target_geometry, (Point or Polygon)):
+        # print(type(target_geometry))
+
+        if isinstance(target_geometry, shapely.geometry.point.Point):
+            target_geometry = rt.Point(target_geometry)
+
+        if isinstance(target_geometry, shapely.geometry.polygon.Polygon):
+            target_geometry = rt.Polygon(target_geometry)
+
+        # print(type(target_geometry))
+        # print(isinstance(target_geometry, rt.Polygon))
+
+        if isinstance(target_geometry, rt.Point) or isinstance(target_geometry, rt.Polygon):
             target_vector = target_geometry
         elif isinstance(target_geometry, RasterGeometry):
             target_vector = target_geometry.boundary_latlon

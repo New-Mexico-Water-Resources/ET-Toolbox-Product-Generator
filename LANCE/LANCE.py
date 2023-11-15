@@ -22,7 +22,7 @@ from MODLAND import find_MODLAND_tiles
 from VIIRS_grid import *
 from VIIRS_orbit import *
 
-DEFAULT_REMOTE = "https://nrt4.modaps.eosdis.nasa.gov/api/v2/content/archives/allData/5000"
+DEFAULT_REMOTE = "https://nrt4.modaps.eosdis.nasa.gov/api/v2/content/archives/allData"
 DEFAULT_READ_TIMEOUT = 60
 DEFAULT_RETRIES = 3
 
@@ -108,9 +108,9 @@ def HTTP_listing(
     return directories
 
 
-def available_LANCE_dates(product: str, remote=DEFAULT_REMOTE) -> List[date]:
+def available_LANCE_dates(product: str, archive: str, remote=DEFAULT_REMOTE) -> List[date]:
     year = datetime.utcnow().year
-    URL = posixpath.join(remote, product, f"{year:04d}")
+    URL = posixpath.join(remote, archive, product, f"{year:04d}")
     listing = HTTP_listing(URL)
     dates = sorted([datetime.strptime(f"{year:04d}{posixpath.basename(item)}", "%Y%j").date() for item in listing])
 
@@ -196,13 +196,13 @@ def download_LANCE_VIIRS(
 
 def generate_VNP21NRT_URL(
         datetime_UTC: datetime,
-        # remote: str = "https://nrt4.modaps.eosdis.nasa.gov/api/v2/content/archives/allData/5000",
         remote: str = DEFAULT_REMOTE,
-        collection: str = "001"):
+        archive: str = "5200",
+        collection: str = "002"):
     year = datetime_UTC.year
     doy = datetime_UTC.timetuple().tm_yday
     granule = f"{datetime_UTC:%H%M}"
-    URL = posixpath.join(remote, "VNP21_NRT", f"{year:04d}", f"{doy:03d}",
+    URL = posixpath.join(remote, archive, "VNP21_NRT", f"{year:04d}", f"{doy:03d}",
                          f"VNP21_NRT.A{year:04d}{doy:03d}.{granule}.{collection}.nc")
 
     return URL
@@ -319,7 +319,7 @@ def retrieve_VNP21NRT(
 
     datetime_solar = datetime(date_solar.year, date_solar.month, date_solar.day, 13, 30)
     datetime_UTC = solar_to_UTC(datetime_solar, geometry.centroid.latlon.x)
-    swaths = find_VIIRS_swaths(date_solar, geometry.corner_polygon_latlon, filter_geometry=True, spacetrack_credentials_filename=spacetrack_credentials_filename)
+    swaths = find_VIIRS_swaths(date_solar, geometry.corner_polygon_latlon.geometry, filter_geometry=True, spacetrack_credentials_filename=spacetrack_credentials_filename)
     composite_image = rt.Raster(np.full(geometry.shape, np.nan), geometry=geometry)
 
     for i, (swath_datetime_UTC, swath_datetime_solar, swath_name, swath_geometry) in swaths.iterrows():
@@ -362,13 +362,14 @@ def retrieve_VNP21NRT_emissivity(
 
 def generate_VNP43IA4N_date_URL(
         date_UTC: Union[date, str],
-        remote: str = DEFAULT_REMOTE) -> str:
+        remote: str = DEFAULT_REMOTE,
+        archive: str = "5000") -> str:
     if isinstance(date_UTC, str):
         date_UTC = parser.parse(date_UTC).date()
 
     year = date_UTC.year
     doy = date_UTC.timetuple().tm_yday
-    URL = posixpath.join(remote, "VNP43IA4N", f"{year:04d}", f"{doy:03d}")
+    URL = posixpath.join(remote, archive, "VNP43IA4N", f"{year:04d}", f"{doy:03d}")
 
     return URL
 
@@ -489,7 +490,7 @@ def retrieve_VNP43IA4N(
     if isinstance(date_UTC, str):
         date_UTC = parser.parse(date_UTC).date()
 
-    tiles = find_MODLAND_tiles(geometry.corner_polygon_latlon)
+    tiles = find_MODLAND_tiles(geometry.corner_polygon_latlon.geometry)
     composite_image = rt.Raster(np.full(geometry.shape, np.nan), geometry=geometry)
 
     listing = list_VNP43IA4N_URLs(date_UTC=date_UTC, tiles=tiles)
@@ -505,13 +506,14 @@ def retrieve_VNP43IA4N(
 
 def generate_VNP43MA4N_date_URL(
         date_UTC: Union[date, str],
-        remote: str = DEFAULT_REMOTE) -> str:
+        remote: str = DEFAULT_REMOTE,
+        archive: str = "5000") -> str:
     if isinstance(date_UTC, str):
         date_UTC = parser.parse(date_UTC).date()
 
     year = date_UTC.year
     doy = date_UTC.timetuple().tm_yday
-    URL = posixpath.join(remote, "VNP43MA4N", f"{year:04d}", f"{doy:03d}")
+    URL = posixpath.join(remote, archive, "VNP43MA4N", f"{year:04d}", f"{doy:03d}")
 
     return URL
 
@@ -519,8 +521,9 @@ def generate_VNP43MA4N_date_URL(
 def list_VNP43MA4N_URLs(
         date_UTC: Union[date, str],
         tiles: List[str] = None,
-        remote: str = DEFAULT_REMOTE) -> pd.DataFrame:
-    date_URL = generate_VNP43MA4N_date_URL(date_UTC=date_UTC, remote=remote)
+        remote: str = DEFAULT_REMOTE,
+        archive: str = "5000") -> pd.DataFrame:
+    date_URL = generate_VNP43MA4N_date_URL(date_UTC=date_UTC, remote=remote, archive=archive)
     URLs = HTTP_listing(date_URL)
     df = pd.DataFrame({"URL": URLs})
     df.insert(0, "tile", df["URL"].apply(lambda URL: posixpath.basename(URL).split(".")[2]))
@@ -658,7 +661,7 @@ def retrieve_VNP43MA4N(
     if isinstance(date_UTC, str):
         date_UTC = parser.parse(date_UTC).date()
 
-    tiles = find_MODLAND_tiles(geometry.corner_polygon_latlon)
+    tiles = find_MODLAND_tiles(geometry.corner_polygon_latlon.geometry)
     composite_image = rt.Raster(np.full(geometry.shape, np.nan), geometry=geometry)
 
     listing = list_VNP43MA4N_URLs(date_UTC=date_UTC, tiles=tiles)
