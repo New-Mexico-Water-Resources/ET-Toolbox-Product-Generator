@@ -11,12 +11,16 @@ logger = logging.getLogger(__name__)
 
 def new_mexico_VIIRS_server(
         working_directory: str = None,
+        output_directory: str = None,
         static_directory: str = None,
         LANCE_download: str = None,
         SRTM_download: str = None,
         GEOS5FP_download: str = None):
     if working_directory is None:
         working_directory = "/new_mexico_VIIRS"
+    
+    if output_directory is None:
+        output_directory = "/VIIRS_output"
 
     if static_directory is None:
         static_directory = "/static"
@@ -101,6 +105,7 @@ def new_mexico_VIIRS_server(
             ET_toolbox_hindcast_coarse_tile(
                 tile=tile,
                 working_directory=working_directory,
+                output_directory=output_directory,
                 static_directory=static_directory,
                 SRTM_download=SRTM_download,
                 LANCE_download=LANCE_download,
@@ -116,6 +121,11 @@ def main(argv=sys.argv):
         working_directory = argv[argv.index("--working") + 1]
     else:
         working_directory = "."
+
+    if "--output" in argv:
+        output_directory = argv[argv.index("--output") + 1]
+    else:
+        output_directory = join(working_directory, "VIIRS_output")
 
     if "--static" in argv:
         static_directory = argv[argv.index("--static") + 1]
@@ -139,6 +149,7 @@ def main(argv=sys.argv):
 
     return new_mexico_VIIRS_server(
         working_directory=working_directory,
+        output_directory=output_directory,
         static_directory=static_directory,
         SRTM_download=SRTM_download,
         LANCE_download=LANCE_download,
