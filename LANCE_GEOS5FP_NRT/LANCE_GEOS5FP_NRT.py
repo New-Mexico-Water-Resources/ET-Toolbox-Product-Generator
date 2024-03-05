@@ -1,6 +1,7 @@
 from glob import glob
 from os.path import splitext
 from typing import Dict, Callable
+import boto3
 
 from GEDI import GEDICanopyHeight
 from GEOS5FP import GEOS5FP
@@ -153,6 +154,7 @@ def LANCE_GEOS5FP_NRT(
         static_directory: str = None,
         LANCE_download_directory: str = None,
         LANCE_output_directory: str = None,
+        output_bucket_name: str = None,
         SRTM_connection: SRTM = None,
         SRTM_download: str = None,
         GEOS5FP_connection: GEOS5FP = None,
@@ -220,6 +222,12 @@ def LANCE_GEOS5FP_NRT(
         LANCE_output_directory = join(working_directory, DEFAULT_LANCE_OUTPUT_DIRECTORY)
 
     logger.info(f"LANCE output directory: {cl.dir(LANCE_output_directory)}")
+
+    if output_bucket_name is not None:
+        logger.info(f"output S3 bucket: {output_bucket_name}")
+        session = boto3.Session()
+        s3 = session.resource("s3")
+        output_bucket = s3.Bucket(output_bucket_name)
 
     LANCE_already_processed = check_LANCE_already_processed(
         LANCE_output_directory=LANCE_output_directory,
@@ -613,5 +621,11 @@ def LANCE_GEOS5FP_NRT(
         logger.info(
             f"writing LANCE GEOS-5 FP {cl.name(product)} at {cl.place(target)} at {cl.time(time_UTC)} to file: {cl.file(filename)}")
         image.to_geotiff(filename)
+
+        ## TODO upload to S3 bucket
+        if output_bucket_name is not None:
+            filename_base = basename(filename)
+            logger.info(f"uploading {filename} to bucket {output_bucket_name}")
+            output_bucket.upload_file(filename, filename_base)
 
     return results

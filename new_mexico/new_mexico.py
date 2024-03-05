@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 def new_mexico_VIIRS_server(
         working_directory: str = None,
         output_directory: str = None,
+        output_bucket_name: str = None,
         static_directory: str = None,
         LANCE_download: str = None,
         SRTM_download: str = None,
@@ -106,6 +107,7 @@ def new_mexico_VIIRS_server(
                 tile=tile,
                 working_directory=working_directory,
                 output_directory=output_directory,
+                output_bucket_name=output_bucket_name,
                 static_directory=static_directory,
                 SRTM_download=SRTM_download,
                 LANCE_download=LANCE_download,
@@ -126,6 +128,11 @@ def main(argv=sys.argv):
         output_directory = argv[argv.index("--output") + 1]
     else:
         output_directory = join(working_directory, "VIIRS_output")
+
+    if "--bucket" in argv:
+        output_bucket_name = argv[argv.index("--bucket") + 1]
+    else:
+        output_bucket_name = join(working_directory, "jpl-nmw-dev-viirs")
 
     if "--static" in argv:
         static_directory = argv[argv.index("--static") + 1]
