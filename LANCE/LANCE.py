@@ -103,7 +103,7 @@ def HTTP_listing(
 
     if len(directories) == 0:
         logger.error(response.text)
-        raise LANCENotAvailableError("no links found at LANCE URL: {URL}")
+        raise LANCENotAvailableError(f"no links found at LANCE URL: {URL}")
 
     return directories
 
