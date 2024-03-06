@@ -5,6 +5,7 @@ channels:
 dependencies:
   - astropy
   - beautifulsoup4
+  - boto3
   - cmake
   - descartes
   - ephem
