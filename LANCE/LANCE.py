@@ -25,6 +25,7 @@ from VIIRS_orbit import *
 DEFAULT_REMOTE = "https://nrt4.modaps.eosdis.nasa.gov/api/v2/content/archives/allData"
 DEFAULT_READ_TIMEOUT = 60
 DEFAULT_RETRIES = 3
+ARCHIVE = "5200"
 
 NDVI_CMAP = LinearSegmentedColormap.from_list(
     name="NDVI",
@@ -363,7 +364,7 @@ def retrieve_VNP21NRT_emissivity(
 def generate_VNP43IA4N_date_URL(
         date_UTC: Union[date, str],
         remote: str = DEFAULT_REMOTE,
-        archive: str = "5000") -> str:
+        archive: str = ARCHIVE) -> str:
     if isinstance(date_UTC, str):
         date_UTC = parser.parse(date_UTC).date()
 
@@ -507,7 +508,7 @@ def retrieve_VNP43IA4N(
 def generate_VNP43MA4N_date_URL(
         date_UTC: Union[date, str],
         remote: str = DEFAULT_REMOTE,
-        archive: str = "5000") -> str:
+        archive: str = ARCHIVE) -> str:
     if isinstance(date_UTC, str):
         date_UTC = parser.parse(date_UTC).date()
 
@@ -522,7 +523,7 @@ def list_VNP43MA4N_URLs(
         date_UTC: Union[date, str],
         tiles: List[str] = None,
         remote: str = DEFAULT_REMOTE,
-        archive: str = "5000") -> pd.DataFrame:
+        archive: str = ARCHIVE) -> pd.DataFrame:
     date_URL = generate_VNP43MA4N_date_URL(date_UTC=date_UTC, remote=remote, archive=archive)
     URLs = HTTP_listing(date_URL)
     df = pd.DataFrame({"URL": URLs})

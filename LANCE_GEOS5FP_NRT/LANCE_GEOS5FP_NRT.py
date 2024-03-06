@@ -15,6 +15,8 @@ from SoilGrids import SoilGrids
 from downscaling import downscale_air_temperature, downscale_soil_moisture, downscale_vapor_pressure_deficit, \
     downscale_relative_humidity, bias_correct
 
+from LANCE import ARCHIVE
+
 ET_MODEL_NAME = "PTJPL"
 DEFAULT_LANCE_DOWNLOAD_DIRECTORY = "LANCE_download_directory"
 DEFAULT_LANCE_OUTPUT_DIRECTORY = "LANCE_output"
@@ -248,7 +250,7 @@ def LANCE_GEOS5FP_NRT(
         else:
             return
 
-    LANCE_dates = available_LANCE_dates("VNP43MA4N", archive="5000")
+    LANCE_dates = available_LANCE_dates("VNP43MA4N", archive=ARCHIVE)
     earliest_LANCE_date = LANCE_dates[0]
     latest_LANCE_date = LANCE_dates[-1]
     logger.info(f"LANCE is available from {cl.time(earliest_LANCE_date)} to {cl.time(latest_LANCE_date)}")
