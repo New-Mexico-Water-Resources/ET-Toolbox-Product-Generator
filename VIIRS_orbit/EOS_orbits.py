@@ -69,6 +69,9 @@ SQLITE3_TIMEOUT_SECONDS = 30
 
 logger = logging.getLogger(__name__)
 
+def sanitize_SQL_name(table_name: str) -> str:
+    return ''.join(ch for ch in str(table_name) if ch.isalnum())
+
 class DummyLock:
     def __enter__(self):
         pass
@@ -338,9 +341,10 @@ class TLEDatabase:
 
         return records
 
-    def _query_tle_record(self, satellite, target_datetime):
+    def _query_tle_record(self, satellite: str, target_datetime: datetime):
         TRIES = 3
         WAIT_SECONDS = 30
+
 
         for i in range(1, TRIES + 1):
             try:
@@ -349,9 +353,7 @@ class TLEDatabase:
                     target_timestamp = target_datetime.strftime('%Y-%m-%d %H:%M:%S')
 
                     # generate SQL string
-                    tle_query_sql_string = 'SELECT * FROM %s WHERE dt <= ? ORDER BY dt DESC LIMIT 1 ' % (
-                        satellite.satellite_name
-                    )
+                    tle_query_sql_string = f"SELECT * FROM {sanitize_SQL_name(satellite)} WHERE dt <= ? ORDER BY dt DESC LIMIT 1"
 
                     # query database
                     records = list(
@@ -393,18 +395,13 @@ class TLEDatabase:
             cursor = connection.cursor()
 
             # generate table existence SQL query
-            table_existence_sql_string = "SELECT * FROM sqlite_master WHERE type='table' AND name='%s'" % (
-                satellite.satellite_name
-            )
+            table_existence_sql_string = "SELECT * FROM sqlite_master WHERE type='table' AND name=?"
 
-            result = len(list(cursor.execute(table_existence_sql_string))) != 0
+            result = len(list(cursor.execute(table_existence_sql_string, (satellite.satellite_name,)))) != 0
 
         return result
 
-    def update_tle_table(
-            self,
-            satellite):
-
+    def update_tle_table(self, satellite):
         last_access_filename = join(dirname(self.db_location), "tle_last_access.txt")
         now = datetime.utcnow()
 
@@ -437,22 +434,18 @@ class TLEDatabase:
             f.write(now_timestamp)
 
         # generate table existence SQL query
-        table_existence_sql_string = "SELECT * FROM sqlite_master WHERE type='table' AND name='%s'" % (
-            satellite.satellite_name
-        )
+        table_existence_sql_string = "SELECT * FROM sqlite_master WHERE type='table' AND name=?"
 
         # generate table create SQL query
-        table_creation_sql_string = 'CREATE TABLE %s (dt TEXT UNIQUE, tle TEXT)' % (
-            satellite.satellite_name
-        )
+        table_creation_sql_string = 'CREATE TABLE ? (dt TEXT UNIQUE, tle TEXT)'
 
         with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
             cursor = connection.cursor()
 
             # create table for satellite if it doesn't exist
-            if (len(list(cursor.execute(table_existence_sql_string))) == 0):
+            if (len(list(cursor.execute(table_existence_sql_string, (satellite.satellite_name,)))) == 0):
                 try:
-                    cursor.execute(table_creation_sql_string)
+                    cursor.execute(table_creation_sql_string, (satellite.satellite_name,))
                 except sqlite3.OperationalError as e:
                     pass
 
@@ -474,7 +467,7 @@ class TLEDatabase:
         records = self._parse_tle_query_text_to_records(tle_query_text)
 
         # generate insertion SQL string
-        tle_insertion_sql_string = 'INSERT OR REPLACE INTO %s VALUES(?, ?)' % satellite.satellite_name
+        tle_insertion_sql_string = 'INSERT OR REPLACE INTO ? VALUES(?, ?)'
 
         try:
             with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
@@ -482,13 +475,11 @@ class TLEDatabase:
 
                 # store TLEs in local database
                 for dt, tle in records:
-                    cursor.execute(tle_insertion_sql_string, (
-                        dt.strftime('%Y-%m-%d %H:%M:%S'),
-                        tle
-                    ))
+                    cursor.execute(tle_insertion_sql_string, (satellite.satellite_name, dt.strftime('%Y-%m-%d %H:%M:%S'), tle))
         except Exception as e:
             logger.error(e)
             raise IOError("unable to connect to database {}".format(self.db_location))
+
 
     def record_count(self, satellite):
         sql_query_string = 'SELECT count(*) FROM %s' % satellite.satellite_name
@@ -563,16 +554,14 @@ class TLEDatabase:
         self.check_database(satellite)
 
         # generate SQL string
-        tle_query_sql_string = 'SELECT * FROM %s' % (
-            satellite.satellite_name
-        )
+        tle_query_sql_string = 'SELECT * FROM ?'
 
         with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
             cursor = connection.cursor()
-            satellite_history = list(cursor.execute(tle_query_sql_string))
+            # Use a tuple (satellite.satellite_name,) as the parameter
+            satellite_history = list(cursor.execute(tle_query_sql_string, (satellite.satellite_name,)))
 
         return satellite_history
-
 
 class SwathDatabase:
     # TODO cache swath polygons here the same way as TLEs
@@ -607,8 +596,8 @@ class SwathDatabase:
             cursor = connection.cursor()
 
             # generate table existence SQL query
-            table_existence_sql_string = "SELECT * FROM sqlite_master WHERE type='table' AND name='%s'" % self.table_name
-            result = len(list(cursor.execute(table_existence_sql_string))) != 0
+            table_existence_sql_string = "SELECT * FROM sqlite_master WHERE type='table' AND name=?"
+            result = len(list(cursor.execute(table_existence_sql_string, (self.table_name,)))) != 0
 
         return result
 
@@ -618,13 +607,13 @@ class SwathDatabase:
             table_name = self.table_name
 
             # generate table existence SQL query
-            table_existence_sql_string = "SELECT * FROM sqlite_master WHERE type='table' AND name='%s'" % table_name
-
+            table_existence_sql_string = "SELECT * FROM sqlite_master WHERE type='table' AND name=?"
+            
             # generate table create SQL query
-            table_creation_sql_string = 'CREATE TABLE %s (dt TEXT UNIQUE, poly TEXT)' % table_name
+            table_creation_sql_string = f"CREATE TABLE {sanitize_SQL_name(table_name)} (dt TEXT UNIQUE, poly TEXT)"
 
             # create table for satellite if it doesn't exist
-            if (len(list(cursor.execute(table_existence_sql_string))) == 0):
+            if (len(list(cursor.execute(table_existence_sql_string, (table_name,)))) == 0):
                 cursor.execute(table_creation_sql_string)
 
     def put(self, dt, poly):
@@ -643,7 +632,8 @@ class SwathDatabase:
             cursor = connection.cursor()
 
             # generate insertion SQL string
-            insertion_sql_string = 'INSERT OR REPLACE INTO %s VALUES(?, ?)' % self.table_name
+            insertion_sql_string = f"INSERT OR REPLACE INTO {sanitize_SQL_name(self.table_name)} VALUES(?, ?)"
+
 
             cursor.execute(insertion_sql_string, (
                 dt_string,
@@ -663,7 +653,7 @@ class SwathDatabase:
             cursor = connection.cursor()
 
             # generate SQL string
-            query_sql_string = 'SELECT * FROM %s WHERE dt == ? ORDER BY dt DESC LIMIT 1 ' % self.table_name
+            query_sql_string = f"SELECT * FROM {sanitize_SQL_name(self.table_name)} WHERE dt == ? ORDER BY dt DESC LIMIT 1 "
 
             # query database
             records = list(cursor.execute(query_sql_string, [dt_string]))
