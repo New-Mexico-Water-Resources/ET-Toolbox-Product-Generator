@@ -5,14 +5,14 @@ import base64
 import itertools
 import json
 import logging
-import sqlite3
 import warnings
 from datetime import date, datetime, timedelta
 from itertools import tee
 from os import makedirs
 from os.path import exists, join, dirname, abspath
 from time import sleep
-
+import pandas as pd
+import geopandas as gpd
 import ephem
 import fiona
 import numpy
@@ -62,8 +62,8 @@ WGS84 = WGS84_PROJ4
 WGS84_FIONA_CRS = fiona.crs.from_string(WGS84_PROJ4)
 
 DATABASE_DIRECTORY_NAME = 'eos_orbits'
-DEFAULT_SQLITE3_DB_FILENAME = 'tle.sqlite3'
-DEFAULT_SWATH_DB_FILENAME = 'swath.sqlite3'
+DEFAULT_TLE_TABLE_DIRECTORY = 'tle'
+DEFAULT_SWATH_TABLE_DIRECTORY = 'swath'
 
 SQLITE3_TIMEOUT_SECONDS = 30
 
@@ -294,12 +294,12 @@ class TLEDatabase:
     def __init__(
             self,
             spacetrack_credentials=None,
-            sqlite3_db_location=DEFAULT_SQLITE3_DB_FILENAME,
+            table_location=DEFAULT_TLE_TABLE_DIRECTORY,
             lock=None):
         """
         Local cache of spacetrack database.
-        :param sqlite3_db_location:
-            Name of local sqlite3 database file.
+        :param table_location:
+            Name of local TLE table file.
         :param spacetrack_credentials:
             Object of class SpaceTrackCredentials containing username and password to access spacetrack TLEs.
         """
@@ -309,10 +309,10 @@ class TLEDatabase:
 
         self.lock = lock
 
-        if sqlite3_db_location is None:
-            self.db_location = DEFAULT_SQLITE3_DB_FILENAME
+        if table_location is None:
+            self.TLE_table_directory = DEFAULT_TLE_TABLE_DIRECTORY
         else:
-            self.db_location = sqlite3_db_location
+            self.TLE_table_directory = table_location
 
         if spacetrack_credentials is None:
             credentials = get_spacetrack_credentials()
@@ -338,13 +338,13 @@ class TLEDatabase:
 
         return records
 
-    def _query_tle_record(self, satellite, target_datetime):
+    def _query_tle_record(self, satellite: str, target_datetime: datetime):
         TRIES = 3
         WAIT_SECONDS = 30
 
         for i in range(1, TRIES + 1):
             try:
-                with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
+                with sqlite3.connect(self.TLE_table_directory, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
                     cursor = connection.cursor()
                     target_timestamp = target_datetime.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -373,7 +373,7 @@ class TLEDatabase:
             except:
                 logger.warning(
                     "access to db at {} failed on attempt {}, waiting {} seconds".format(
-                        self.db_location,
+                        self.TLE_table_directory,
                         i,
                         WAIT_SECONDS
                     ))
@@ -382,30 +382,20 @@ class TLEDatabase:
 
                 continue
 
-            raise IOError("all attempts to access db at {} failed".format(self.db_location))
+            raise IOError("all attempts to access db at {} failed".format(self.TLE_table_directory))
 
     @property
     def database_exists(self):
-        return exists(self.db_location)
+        return exists(self.TLE_table_directory)
+    
+    def table_filename(self, satellite: str) -> str:
+        return join(self.TLE_table_directory, f"{satellite}.csv")
 
-    def table_exists(self, satellite):
-        with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
-            cursor = connection.cursor()
+    def table_exists(self, satellite: str) -> bool:
+        return exists(self.table_filename(satellite))
 
-            # generate table existence SQL query
-            table_existence_sql_string = "SELECT * FROM sqlite_master WHERE type='table' AND name='%s'" % (
-                satellite.satellite_name
-            )
-
-            result = len(list(cursor.execute(table_existence_sql_string))) != 0
-
-        return result
-
-    def update_tle_table(
-            self,
-            satellite):
-
-        last_access_filename = join(dirname(self.db_location), "tle_last_access.txt")
+    def update_tle_table(self, satellite: str):
+        last_access_filename = join(dirname(self.TLE_table_directory), "tle_last_access.txt")
         now = datetime.utcnow()
 
         if exists(last_access_filename):
@@ -436,26 +426,6 @@ class TLEDatabase:
         with open(last_access_filename, "w") as f:
             f.write(now_timestamp)
 
-        # generate table existence SQL query
-        table_existence_sql_string = "SELECT * FROM sqlite_master WHERE type='table' AND name='%s'" % (
-            satellite.satellite_name
-        )
-
-        # generate table create SQL query
-        table_creation_sql_string = 'CREATE TABLE %s (dt TEXT UNIQUE, tle TEXT)' % (
-            satellite.satellite_name
-        )
-
-        with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
-            cursor = connection.cursor()
-
-            # create table for satellite if it doesn't exist
-            if (len(list(cursor.execute(table_existence_sql_string))) == 0):
-                try:
-                    cursor.execute(table_creation_sql_string)
-                except sqlite3.OperationalError as e:
-                    pass
-
         # connect to Space Track
         st = SpaceTrackClient(
             identity=self.spacetrack_credentials.username,
@@ -473,27 +443,13 @@ class TLEDatabase:
         # parse retrieved TLE
         records = self._parse_tle_query_text_to_records(tle_query_text)
 
-        # generate insertion SQL string
-        tle_insertion_sql_string = 'INSERT OR REPLACE INTO %s VALUES(?, ?)' % satellite.satellite_name
-
-        try:
-            with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
-                cursor = connection.cursor()
-
-                # store TLEs in local database
-                for dt, tle in records:
-                    cursor.execute(tle_insertion_sql_string, (
-                        dt.strftime('%Y-%m-%d %H:%M:%S'),
-                        tle
-                    ))
-        except Exception as e:
-            logger.error(e)
-            raise IOError("unable to connect to database {}".format(self.db_location))
+        df = pd.read_csv(self.table_filename(satellite))
+        df = df.append(pd.DataFrame({"dt": [dt], "TLE": }))
 
     def record_count(self, satellite):
         sql_query_string = 'SELECT count(*) FROM %s' % satellite.satellite_name
 
-        with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
+        with sqlite3.connect(self.TLE_table_directory, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
             cursor = connection.cursor()
             cursor.execute(sql_query_string)
 
@@ -567,7 +523,7 @@ class TLEDatabase:
             satellite.satellite_name
         )
 
-        with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
+        with sqlite3.connect(self.TLE_table_directory, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
             cursor = connection.cursor()
             satellite_history = list(cursor.execute(tle_query_sql_string))
 
@@ -581,7 +537,7 @@ class SwathDatabase:
             self,
             satellite_name,
             sensor_name,
-            swath_db_location=DEFAULT_SWATH_DB_FILENAME,
+            swath_table_directory=DEFAULT_SWATH_TABLE_DIRECTORY,
             lock=None):
 
         if lock is None:
@@ -589,98 +545,66 @@ class SwathDatabase:
 
         self.lock = lock
 
-        self.db_location = swath_db_location
+        self.swath_table_directory = swath_table_directory
         self.satellite_name = str(satellite_name)
         self.sensor_name = str(sensor_name)
 
     @property
-    def database_exists(self):
-        return exists(self.db_location)
+    def table_directory_exists(self) -> bool:
+        return exists(self.swath_table_directory)
 
     @property
-    def table_name(self):
+    def table_name(self) -> str:
         return "{}_{}".format(self.satellite_name, self.sensor_name)
 
     @property
-    def table_exists(self):
-        with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
-            cursor = connection.cursor()
+    def table_filename(self) -> str:
+        return join(self.swath_table_directory, f"{self.table_name}.geojson")
 
-            # generate table existence SQL query
-            table_existence_sql_string = "SELECT * FROM sqlite_master WHERE type='table' AND name='%s'" % self.table_name
-            result = len(list(cursor.execute(table_existence_sql_string))) != 0
+    @property
+    def table_exists(self) -> bool:
+        return exists(self.table_filename)
 
-        return result
+    def put(self, overpass_datetime: datetime, geometry: Polygon):
+        if isinstance(geometry, string_types):
+            geometry = shape(geometry)
 
-    def update_table(self):
-        with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
-            cursor = connection.cursor()
-            table_name = self.table_name
+        if isinstance(overpass_datetime, string_types):
+            overpass_datetime = parser.parse(overpass_datetime)
 
-            # generate table existence SQL query
-            table_existence_sql_string = "SELECT * FROM sqlite_master WHERE type='table' AND name='%s'" % table_name
+        wkt = geometry.wkt
+        dt_string = str(overpass_datetime.strftime('%Y-%m-%d %H:%M:%S'))
 
-            # generate table create SQL query
-            table_creation_sql_string = 'CREATE TABLE %s (dt TEXT UNIQUE, poly TEXT)' % table_name
+        gdf = gpd.read_file(self.table_filename)
 
-            # create table for satellite if it doesn't exist
-            if (len(list(cursor.execute(table_existence_sql_string))) == 0):
-                cursor.execute(table_creation_sql_string)
+        # append polygon to table
+        gdf = gdf.append(gpd.GeoDataFrame({"dt": [overpass_datetime], "geometry": [geometry]}))
 
-    def put(self, dt, poly):
-        if isinstance(poly, string_types):
-            poly = shape(poly)
+        gdf.to_file(self.table_filename, driver="GeoJSON")
 
-        if isinstance(dt, string_types):
-            dt = parser.parse(dt)
-
-        wkt = poly.wkt
-        dt_string = str(dt.strftime('%Y-%m-%d %H:%M:%S'))
-
-        self.update_table()
-
-        with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
-            cursor = connection.cursor()
-
-            # generate insertion SQL string
-            insertion_sql_string = 'INSERT OR REPLACE INTO %s VALUES(?, ?)' % self.table_name
-
-            cursor.execute(insertion_sql_string, (
-                dt_string,
-                wkt
-            ))
-
-    def get(self, dt):
+    def get(self, overpass_datetime: datetime) -> Polygon:
         if not self.table_exists:
             return None
 
-        if isinstance(dt, string_types):
-            dt = parser.parse(dt)
+        if isinstance(overpass_datetime, string_types):
+            overpass_datetime = parser.parse(overpass_datetime)
 
-        dt_string = str(dt.strftime('%Y-%m-%d %H:%M:%S'))
+        dt_string = str(overpass_datetime.strftime('%Y-%m-%d %H:%M:%S'))
 
-        with sqlite3.connect(self.db_location, timeout=SQLITE3_TIMEOUT_SECONDS) as connection:
-            cursor = connection.cursor()
+        # Read GeoJSON file
+        gdf = gpd.read_file(self.table_filename)
 
-            # generate SQL string
-            query_sql_string = 'SELECT * FROM %s WHERE dt == ? ORDER BY dt DESC LIMIT 1 ' % self.table_name
+        # Select the row where the dt column matches overpass_datetime
+        record = gdf[gdf['dt'] == dt_string]
 
-            # query database
-            records = list(cursor.execute(query_sql_string, [dt_string]))
-
-            # check if record exists
-            if len(records) == 0:
-                record = None
-            else:
-                record = records[0]
-
-        if record is None:
+        # Check if record exists
+        if len(record) == 0:
             return None
 
-        poly_string = str(record[1])
-        poly = shapely.wkt.loads(poly_string)
+        # Return the geometry associated with that row
+        geometry = record["geometry"].values[0]
 
-        return poly
+        return geometry
 
 
 # class to calculate the position of a satellite
